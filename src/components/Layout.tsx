@@ -12,7 +12,7 @@ export function Layout() {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Enhanced Header */}
       <header className="bg-card border-b border-border p-4 flex justify-between items-center shadow-sm">
-        <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+        <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text ">
           FinGuide SG
         </h1>
         <div className="flex items-center gap-2">
