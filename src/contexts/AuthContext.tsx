@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { User, Session, AuthError, PostgrestError } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
+import { createUserProfile } from '@/utils/createUserProfile'
 
 export interface UserProfile {
   id: string
@@ -62,17 +63,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event, session?.user?.id)
       if (!mounted) return
 
       setSession(session)
       setUser(session?.user ?? null)
 
       if (session?.user) {
-        setTimeout(() => fetchUserProfile(session.user.id), 0)
+        setTimeout(() => {
+          fetchUserProfile(session.user.id).finally(() => {
+            setLoading(false)
+          })
+        }, 0)
       } else {
         setProfile(null)
+        setLoading(false)
       }
-      setLoading(false)
     })
 
     // Fallback timeout to prevent infinite loading
@@ -99,12 +105,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) {
         console.error('Error fetching profile:', error)
-        return
+        return null
+      }
+
+      if (!data && user) {
+        // Profile doesn't exist, create it
+        console.log('No profile found, creating one...')
+        const newProfile = await createUserProfile(user)
+        setProfile(newProfile)
+        return newProfile
       }
 
       setProfile(data)
+      return data
     } catch (error) {
       console.error('Error fetching profile:', error)
+      return null
     }
   }
 
@@ -130,23 +146,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error }
       }
 
-      if (data.user) {
-        // Create user profile
+      if (data.user && data.user.user_metadata) {
+        // Create user profile using metadata
+        const userData = data.user.user_metadata;
         const { error: profileError } = await supabase
           .from('user_profiles')
-          .insert({
+          .upsert({
             user_id: data.user.id,
-            full_name: fullName,
-            phone: phone,
+            full_name: userData.full_name || fullName,
+            phone: userData.phone || phone,
             country: 'Singapore',
             occupation: 'Migrant Worker',
+          }, {
+            onConflict: 'user_id'
           })
 
-        if (profileError && profileError.code !== '23505') { // 23505 = unique constraint violation
+        if (profileError) {
           console.error('Error creating profile:', profileError)
         } else {
           // Fetch the created profile
-          await fetchUserProfile(data.user.id)
+          setTimeout(() => fetchUserProfile(data.user.id), 100)
         }
 
         toast({
