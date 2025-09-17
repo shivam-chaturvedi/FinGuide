@@ -70,10 +70,12 @@ export default {
         "gradient-primary": "var(--gradient-primary)",
         "gradient-secondary": "var(--gradient-secondary)",
         "gradient-hero": "var(--gradient-hero)",
+        "gradient-auth": "var(--gradient-auth)",
       },
       boxShadow: {
         soft: "var(--shadow-soft)",
         card: "var(--shadow-card)",
+        glow: "var(--shadow-glow)",
       },
       borderRadius: {
         lg: "var(--radius)",

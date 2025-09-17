@@ -6,20 +6,25 @@ import { BookOpen, Calculator, Send, TrendingUp, Target, Shield } from "lucide-r
 export default function Home() {
   return (
     <div className="p-4 space-y-6">
-      {/* Hero Section */}
+      {/* Enhanced Hero Section */}
       <div className="text-center py-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">
+        <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
           Welcome to FinGuide SG
         </h1>
         <p className="text-lg text-muted-foreground mb-6">
           Empowering Migrant Workers with Financial Knowledge
         </p>
-        <div className="bg-gradient-hero rounded-xl p-6 text-white">
+        <div className="bg-gradient-hero rounded-xl p-6 text-white shadow-glow">
           <h2 className="text-xl font-semibold mb-2">Start Your Financial Journey</h2>
           <p className="mb-4 opacity-90">Learn, Save, and Send Money Safely</p>
-          <Button asChild variant="secondary" size="lg">
-            <Link to="/modules">Start Learning</Link>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button asChild variant="secondary" size="lg" className="shadow-soft">
+              <Link to="/modules">Start Learning</Link>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-primary">
+              <Link to="/signup">Join Free</Link>
+            </Button>
+          </div>
         </div>
       </div>
 
