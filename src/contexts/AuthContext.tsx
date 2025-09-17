@@ -61,14 +61,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return
 
       setSession(session)
       setUser(session?.user ?? null)
 
       if (session?.user) {
-        await fetchUserProfile(session.user.id)
+        setTimeout(() => fetchUserProfile(session.user.id), 0)
       } else {
         setProfile(null)
       }
@@ -95,9 +95,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .from('user_profiles')
         .select('*')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      if (error) {
         console.error('Error fetching profile:', error)
         return
       }
@@ -138,12 +138,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             user_id: data.user.id,
             full_name: fullName,
             phone: phone,
-            country: 'Singapore', // Default country
-            occupation: 'Migrant Worker', // Default occupation
+            country: 'Singapore',
+            occupation: 'Migrant Worker',
           })
 
-        if (profileError) {
+        if (profileError && profileError.code !== '23505') { // 23505 = unique constraint violation
           console.error('Error creating profile:', profileError)
+        } else {
+          // Fetch the created profile
+          await fetchUserProfile(data.user.id)
         }
 
         toast({
