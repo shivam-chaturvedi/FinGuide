@@ -62,8 +62,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
     themes.forEach(t => root.classList.remove(`theme-${t.id}`));
     
-    // Add current theme class
-    root.classList.add(`theme-${theme}`);
+    // Add current theme class (only if not default)
+    if (theme !== 'default') {
+      root.classList.add(`theme-${theme}`);
+    }
   }, [theme]);
 
   return (

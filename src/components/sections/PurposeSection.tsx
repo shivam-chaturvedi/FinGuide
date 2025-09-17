@@ -1,6 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { APP_CONFIG } from "@/config/app";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme as useNextTheme } from "next-themes";
 
 const PurposeSection = () => {
+  const { theme } = useTheme();
+  const { theme: darkMode } = useNextTheme();
+  const isDark = darkMode === 'dark';
+  
   return (
     <section className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
@@ -15,7 +22,7 @@ const PurposeSection = () => {
                 <div>
                   <div className="text-lg text-muted-foreground leading-relaxed">
                     <p className="mb-6">
-                      The purpose of this app is to spread <span className="font-semibold text-primary">financial literacy among migrant workers in Singapore</span>. 
+                      The purpose of this app is to spread <span className="font-semibold text-primary">financial literacy among {APP_CONFIG.targetAudience}</span>. 
                     </p>
                     <p>
                       It empowers workers with knowledge to save, budget, invest, and safely send money home. We believe everyone deserves access to financial education, regardless of their background or income level.

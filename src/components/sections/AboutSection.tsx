@@ -1,7 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { BookOpen, Shield, Globe, Users } from "lucide-react";
+import { APP_CONFIG } from "@/config/app";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const AboutSection = () => {
+  const { theme, isDark } = useTheme();
+  
   const features = [
     {
       icon: BookOpen,
@@ -31,7 +35,7 @@ const AboutSection = () => {
         <div className="text-center mb-16 animate-on-scroll">
           <h2 className="text-4xl font-bold text-foreground mb-4">Why this App?</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Discover how FinLitSG transforms financial literacy for migrant workers in Singapore
+            Discover how {APP_CONFIG.name} transforms financial literacy for {APP_CONFIG.targetAudience}
           </p>
         </div>
         

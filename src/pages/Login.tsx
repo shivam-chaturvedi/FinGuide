@@ -8,6 +8,9 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Lock, Eye, EyeOff, Smartphone, ArrowLeft, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { APP_CONFIG } from "@/config/app";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -17,28 +20,38 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
+  const { signIn, user } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      toast({
-        title: "Welcome back! 👋",
-        description: "You have successfully logged in to FinGuide SG.",
-      });
-      navigate("/");
+
+    try {
+      const { error } = await signIn(email, password);
+      if (!error) {
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
-  const handleGuestLogin = () => {
-    toast({
-      title: "Guest Access Granted",
-      description: "Exploring with limited features. Sign up for full access!",
-    });
-    navigate("/");
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const { resetPassword } = useAuth();
+    await resetPassword(email);
   };
 
   return (
@@ -53,7 +66,7 @@ export default function Login() {
             className="text-white hover:bg-white/10"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Home
+            {t('common.back')}
           </Button>
         </div>
 
@@ -62,122 +75,102 @@ export default function Login() {
           <div className="w-16 h-16 mx-auto bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
             <Shield className="h-8 w-8" />
           </div>
-          <h1 className="text-2xl font-bold">Welcome Back</h1>
-          <p className="text-white/80">Continue your financial journey with FinGuide SG</p>
+          <h1 className="text-2xl font-bold">{t('login.welcome')}</h1>
+          <p className="text-white/80">{t('login.subtitle')}</p>
         </div>
 
         {/* Login Form */}
         <Card className="backdrop-blur-sm bg-white/95 shadow-glow border-0">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>
+            <CardTitle className="text-2xl font-bold text-center">{t('login.title')}</CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to access your account
+              {t('login.desc')}
             </CardDescription>
           </CardHeader>
           
-          <CardContent className="space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email Field */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">
-                  Email Address
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="john@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-12"
-                    required
-                  />
-                </div>
-              </div>
+              <CardContent className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Email Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium">
+                      {t('login.email')}
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="john@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-10 h-12"
+                        required
+                      />
+                    </div>
+                  </div>
 
-              {/* Password Field */}
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">
-                  Password
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 h-12"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                  {/* Password Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-medium">
+                      {t('login.password')}
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-10 pr-10 h-12"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Remember Me & Forgot Password */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="remember"
+                        checked={rememberMe}
+                        onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                      />
+                      <Label htmlFor="remember" className="text-sm">{t('login.remember')}</Label>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-sm text-primary hover:underline font-medium"
+                    >
+                      {t('login.forgot')}
+                    </button>
+                  </div>
+
+                  {/* Login Button */}
+                  <Button 
+                    type="submit" 
+                    className="w-full h-12 font-medium"
+                    disabled={isLoading}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Remember Me & Forgot Password */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="remember" 
-                    checked={rememberMe}
-                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                  />
-                  <Label htmlFor="remember" className="text-sm">Remember me</Label>
-                </div>
-                <Link 
-                  to="/forgot-password" 
-                  className="text-sm text-primary hover:underline font-medium"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-
-              {/* Login Button */}
-              <Button 
-                type="submit" 
-                className="w-full h-12 font-medium"
-                disabled={isLoading}
-              >
-                {isLoading ? "Signing In..." : "Sign In"}
-              </Button>
+                    {isLoading ? t('login.signing') : t('login.signin')}
+                  </Button>
             </form>
 
-            <Separator className="my-6" />
-
-            {/* Alternative Options */}
-            <div className="space-y-3">
-              <Button 
-                variant="outline" 
-                className="w-full h-12 gap-3"
-                onClick={() => toast({ title: "Coming Soon!", description: "Phone login will be available soon." })}
-              >
-                <Smartphone className="h-4 w-4" />
-                Continue with Phone
-              </Button>
-
-              <Button 
-                variant="ghost" 
-                className="w-full h-12"
-                onClick={handleGuestLogin}
-              >
-                Continue as Guest
-              </Button>
-            </div>
 
             {/* Sign Up Link */}
             <div className="text-center pt-4">
               <p className="text-sm text-muted-foreground">
-                Don't have an account?{" "}
+                {t('login.noAccount')}{" "}
                 <Link to="/signup" className="text-primary hover:underline font-medium">
-                  Create Account
+                  {t('login.signup')}
                 </Link>
               </p>
             </div>

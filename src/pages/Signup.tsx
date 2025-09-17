@@ -8,24 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { User, Mail, Lock, Eye, EyeOff, Globe, ArrowLeft, Shield, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { APP_CONFIG } from "@/config/app";
 
-const countries = [
-  { code: "IN", name: "India", flag: "🇮🇳" },
-  { code: "PH", name: "Philippines", flag: "🇵🇭" },
-  { code: "CN", name: "China", flag: "🇨🇳" },
-  { code: "BD", name: "Bangladesh", flag: "🇧🇩" },
-  { code: "MM", name: "Myanmar", flag: "🇲🇲" },
-  { code: "TH", name: "Thailand", flag: "🇹🇭" },
-  { code: "VN", name: "Vietnam", flag: "🇻🇳" },
-];
+const countries = APP_CONFIG.supportedCountries.map((country, index) => {
+  const flags = ["🇮🇳", "🇵🇭", "🇨🇳", "🇧🇩", "🇲🇲", "🇹🇭", "🇻🇳"];
+  const codes = ["IN", "PH", "CN", "BD", "MM", "TH", "VN"];
+  return {
+    code: codes[index] || "XX",
+    name: country,
+    flag: flags[index] || "🌍"
+  };
+});
 
-const benefits = [
-  "Track your financial progress",
-  "Access all learning modules", 
-  "Use advanced calculators",
-  "Get personalized recommendations",
-  "Receive remittance alerts"
-];
+const benefits = APP_CONFIG.features;
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -33,7 +30,10 @@ export default function Signup() {
     email: "",
     password: "",
     confirmPassword: "",
+    phone: "",
     country: "",
+    occupation: "",
+    monthlyIncome: "",
     language: "en"
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -42,6 +42,8 @@ export default function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
+  const { signUp } = useAuth();
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -68,17 +70,37 @@ export default function Signup() {
       return;
     }
 
+    if (formData.password.length < 6) {
+      toast({
+        title: "Password Too Short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      toast({
-        title: "Welcome to FinGuide SG! 🎉",
-        description: "Your account has been created successfully.",
-      });
-      navigate("/");
+    try {
+      const { error } = await signUp(
+        formData.email,
+        formData.password,
+        formData.fullName,
+        formData.phone
+      );
+
+      if (!error) {
+        toast({
+          title: `Welcome to ${APP_CONFIG.name}! 🎉`,
+          description: "Please check your email to verify your account, then sign in.",
+        });
+        navigate("/login");
+      }
+    } catch (error) {
+      console.error('Signup error:', error);
+    } finally {
       setIsLoading(false);
-    }, 2000);
+    }
   };
 
   return (
@@ -102,7 +124,7 @@ export default function Signup() {
               <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
                 <Shield className="h-8 w-8" />
               </div>
-              <h1 className="text-4xl font-bold">Join FinGuide SG</h1>
+              <h1 className="text-4xl font-bold">Join {APP_CONFIG.name}</h1>
               <p className="text-xl text-white/80 leading-relaxed">
                 Start your journey towards financial independence with Singapore's most trusted 
                 financial education platform for migrant workers.
@@ -126,7 +148,7 @@ export default function Signup() {
 
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6">
             <p className="text-sm text-white/80">
-              "FinGuide SG helped me save $2,000 in my first year and learn how to send money home safely. 
+              "{APP_CONFIG.name} helped me save $2,000 in my first year and learn how to send money home safely. 
               The modules are easy to understand in my language!"
             </p>
             <div className="flex items-center gap-3 mt-4">
@@ -200,6 +222,24 @@ export default function Signup() {
                       onChange={(e) => handleInputChange("email", e.target.value)}
                       className="pl-10 h-12"
                       required
+                    />
+                  </div>
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-sm font-medium">
+                    Phone Number (Optional)
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+65 9123 4567"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange("phone", e.target.value)}
+                      className="pl-10 h-12"
                     />
                   </div>
                 </div>
@@ -305,7 +345,7 @@ export default function Signup() {
                     className="mt-0.5"
                   />
                   <Label htmlFor="terms" className="text-sm leading-5">
-                    I agree to FinGuide SG's{" "}
+                    I agree to {APP_CONFIG.name}'s{" "}
                     <Link to="/terms" className="text-primary hover:underline font-medium">
                       Terms of Service
                     </Link>

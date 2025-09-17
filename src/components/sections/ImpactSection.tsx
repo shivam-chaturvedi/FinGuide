@@ -1,6 +1,10 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { APP_CONFIG } from "@/config/app";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const ImpactSection = () => {
+  const { theme, isDark } = useTheme();
+  
   return (
     <section className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
@@ -94,13 +98,13 @@ const ImpactSection = () => {
           <div className="animate-on-scroll">
             <Card className="shadow-card hover:shadow-hero transition-all duration-300">
               <CardContent className="p-8">
-                <p className="text-lg text-muted-foreground leading-relaxed mb-6">
-                  Many migrant workers in Singapore send most of their income home. Without financial awareness, 
-                  they struggle to save or avoid high remittance fees.
-                </p>
-                <p className="text-lg text-foreground font-semibold mb-6">
-                  This app provides <span className="text-primary">trusted, Singapore-specific tools</span> to make smarter money decisions.
-                </p>
+                  <p className="text-lg text-muted-foreground leading-relaxed mb-6">
+                    Many {APP_CONFIG.targetAudience} send most of their income home. Without financial awareness, 
+                    they struggle to save or avoid high remittance fees.
+                  </p>
+                  <p className="text-lg text-foreground font-semibold mb-6">
+                    This app provides <span className="text-primary">trusted, Singapore-specific tools</span> to make smarter money decisions.
+                  </p>
                 
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">

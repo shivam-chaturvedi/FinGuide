@@ -1,7 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Globe } from "lucide-react";
+import { APP_CONFIG } from "@/config/app";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const Footer = () => {
+  const { theme, isDark } = useTheme();
+  
   return (
     <footer className="bg-foreground text-background py-12">
       <div className="container mx-auto px-4">
@@ -10,14 +14,14 @@ const Footer = () => {
           <div className="md:col-span-2">
             <div className="mb-4">
               <h3 className="text-2xl font-bold">
-                FinLit<span className="text-singapore-gold">SG</span>
+                {APP_CONFIG.name}
               </h3>
               <p className="text-background/80 mt-2 max-w-md">
-                Empowering migrant workers in Singapore with financial knowledge and tools for a better future.
+                {APP_CONFIG.description} and tools for a better future.
               </p>
             </div>
             <div className="text-sm text-background/60">
-              © 2025 FinLitSG • Made for Migrant Workers in Singapore
+              © 2025 {APP_CONFIG.name} • Made for {APP_CONFIG.targetAudience}
             </div>
           </div>
           

@@ -1,12 +1,12 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Globe } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function LanguageToggle() {
-  const [language, setLanguage] = useState<"en" | "cn">("en");
+  const { language, setLanguage } = useLanguage();
 
   const toggleLanguage = () => {
-    setLanguage(prev => prev === "en" ? "cn" : "en");
+    setLanguage(language === 'en' ? 'zh' : 'en');
   };
 
   return (

@@ -1,7 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Lock, BookOpen, Calculator, Globe, Target } from "lucide-react";
+import { APP_CONFIG } from "@/config/app";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const FeaturesSection = () => {
+  const { theme, isDark } = useTheme();
+  
   const features = [
     {
       icon: Lock,
@@ -71,9 +75,9 @@ const FeaturesSection = () => {
         <div className="mt-16 animate-on-scroll">
           <Card className="bg-gradient-hero text-primary-foreground shadow-hero">
             <CardContent className="p-12 text-center">
-              <h3 className="text-2xl font-bold mb-4">🎯 Built for Singapore Workers</h3>
+              <h3 className="text-2xl font-bold mb-4">🎯 Built for {APP_CONFIG.targetAudience}</h3>
               <p className="text-lg opacity-90 max-w-2xl mx-auto">
-                Every feature is designed with the unique needs of migrant workers in Singapore in mind. 
+                Every feature is designed with the unique needs of {APP_CONFIG.targetAudience} in mind. 
                 From local banking knowledge to remittance comparisons, we've got you covered.
               </p>
             </CardContent>

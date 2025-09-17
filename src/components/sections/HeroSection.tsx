@@ -1,42 +1,46 @@
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-illustration.jpg";
+import { APP_CONFIG } from "@/config/app";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const HeroSection = () => {
+  const { t } = useLanguage();
+  const { theme, isDark } = useTheme();
+  
   return (
     <section className="relative min-h-screen flex items-center justify-center bg-gradient-hero overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-20">
-        <div className="absolute inset-0 bg-white/5 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.3)_1px,transparent_0)] bg-[length:20px_20px]"></div>
+        <div className="absolute inset-0 bg-white/5 bg-pattern"></div>
       </div>
       
       <div className="container mx-auto px-4 grid lg:grid-cols-2 gap-12 items-center relative z-10">
         {/* Left Content */}
-        <div className="text-center lg:text-left animate-fade-in">
-          <div className="mb-6">
-            <h1 className="text-5xl lg:text-6xl font-bold text-primary-foreground mb-4 leading-tight">
-              FinLit<span className="text-singapore-gold">SG</span>
-            </h1>
-            <p className="text-xl text-primary-foreground/90 font-medium">
-              Empowering Migrant Workers in Singapore with Financial Knowledge
-            </p>
-          </div>
-          
-          <p className="text-lg text-primary-foreground/80 mb-8 max-w-lg mx-auto lg:mx-0">
-            Learn to save, budget, invest, and send money home safely. Built specifically for workers in Singapore.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-            <Button variant="hero" size="xl" className="text-lg font-semibold">
-              Sign Up Free
-            </Button>
-            <Button variant="outline-hero" size="xl" className="text-lg">
-              Login
-            </Button>
-            <Button variant="ghost" size="xl" className="text-primary-foreground hover:bg-white/10">
-              Explore as Guest
-            </Button>
-          </div>
-        </div>
+            <div className="text-center lg:text-left animate-fade-in">
+              <div className="mb-6">
+                <h1 className="text-5xl lg:text-6xl font-bold text-primary-foreground mb-4 leading-tight">
+                  {t('hero.title')}
+                </h1>
+                <p className="text-xl text-primary-foreground/90 font-medium">
+                  {t('hero.subtitle')}
+                </p>
+              </div>
+
+              <p className="text-lg text-primary-foreground/80 mb-8 max-w-lg mx-auto lg:mx-0">
+                {t('hero.description')}
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <Button asChild variant="hero" size="xl" className="text-lg font-semibold">
+                  <Link to="/signup">{t('hero.signup')}</Link>
+                </Button>
+                <Button asChild variant="outline-hero" size="xl" className="text-lg bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700">
+                  <Link to="/login">{t('hero.login')}</Link>
+                </Button>
+              </div>
+            </div>
         
         {/* Right Content - Hero Image */}
         <div className="relative animate-scale-in animation-delay-200">
@@ -48,13 +52,13 @@ const HeroSection = () => {
             />
           </div>
           
-          {/* Floating Elements */}
-          <div className="absolute -top-4 -right-4 bg-singapore-gold text-white px-4 py-2 rounded-full text-sm font-semibold animate-float animation-delay-500">
-            💰 Save Money
-          </div>
-          <div className="absolute -bottom-4 -left-4 bg-growth-green text-white px-4 py-2 rounded-full text-sm font-semibold animate-float animation-delay-1000">
-            📱 Easy to Use
-          </div>
+              {/* Floating Elements */}
+              <div className="absolute -top-4 -right-4 bg-singapore-gold text-white px-4 py-2 rounded-full text-sm font-semibold animate-float animation-delay-500">
+                {t('hero.saveMoney')}
+              </div>
+              <div className="absolute -bottom-4 -left-4 bg-growth-green text-white px-4 py-2 rounded-full text-sm font-semibold animate-float animation-delay-1000">
+                {t('hero.easyUse')}
+              </div>
         </div>
       </div>
       

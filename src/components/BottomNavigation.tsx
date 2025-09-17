@@ -1,23 +1,26 @@
 import { Link, useLocation } from "react-router-dom";
 import { Home, BookOpen, Calculator, Send, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const navItems = [
-  { href: "/", icon: Home, label: "Home", labelCN: "主页" },
-  { href: "/modules", icon: BookOpen, label: "Modules", labelCN: "课程" },
-  { href: "/calculators", icon: Calculator, label: "Tools", labelCN: "工具" },
-  { href: "/remittances", icon: Send, label: "Remit", labelCN: "汇款" },
-  { href: "/profile", icon: User, label: "Profile", labelCN: "个人" },
+  { href: "/dashboard", icon: Home, labelKey: "nav.dashboard" },
+  { href: "/dashboard/modules", icon: BookOpen, labelKey: "nav.modules" },
+  { href: "/dashboard/calculators", icon: Calculator, labelKey: "nav.calculators" },
+  { href: "/dashboard/remittances", icon: Send, labelKey: "nav.remittances" },
+  { href: "/dashboard/profile", icon: User, labelKey: "nav.profile" },
 ];
 
 export function BottomNavigation() {
   const location = useLocation();
+  const { t } = useLanguage();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-2 py-2">
       <div className="flex justify-around items-center">
-        {navItems.map(({ href, icon: Icon, label, labelCN }) => {
-          const isActive = location.pathname === href;
+        {navItems.map(({ href, icon: Icon, labelKey }) => {
+          const isActive = location.pathname === href || 
+            (href === "/dashboard" && location.pathname === "/dashboard/");
           return (
             <Link
               key={href}
@@ -30,7 +33,7 @@ export function BottomNavigation() {
               )}
             >
               <Icon className="h-5 w-5 mb-1" />
-              <span className="text-xs font-medium truncate">{label}</span>
+              <span className="text-xs font-medium truncate">{t(labelKey)}</span>
             </Link>
           );
         })}
