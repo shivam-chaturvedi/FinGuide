@@ -52,11 +52,14 @@ All colors MUST be HSL.
     --gradient-hero: linear-gradient(135deg, hsl(var(--trust-blue)), hsl(var(--trust-blue-light)));
     --gradient-card: linear-gradient(145deg, hsl(var(--background)), hsl(var(--muted)));
     --gradient-feature: linear-gradient(135deg, hsl(var(--growth-green)), hsl(var(--growth-green-light)));
+    --gradient-auth: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
 
     /* Shadows */
     --shadow-card: 0 4px 20px hsl(var(--trust-blue) / 0.1);
     --shadow-hero: 0 20px 40px hsl(var(--trust-blue) / 0.2);
     --shadow-feature: 0 8px 25px hsl(var(--growth-green) / 0.15);
+    --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.4);
+    --shadow-soft: 0 2px 10px hsl(var(--primary) / 0.1);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -107,10 +110,13 @@ All colors MUST be HSL.
     --gradient-hero: linear-gradient(135deg, hsl(var(--trust-blue)), hsl(var(--trust-blue-light)));
     --gradient-card: linear-gradient(145deg, hsl(var(--background)), hsl(var(--muted)));
     --gradient-feature: linear-gradient(135deg, hsl(var(--growth-green)), hsl(var(--growth-green-light)));
+    --gradient-auth: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
 
     --shadow-card: 0 4px 20px hsl(var(--trust-blue) / 0.15);
     --shadow-hero: 0 20px 40px hsl(var(--trust-blue) / 0.25);
     --shadow-feature: 0 8px 25px hsl(var(--growth-green) / 0.2);
+    --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.4);
+    --shadow-soft: 0 2px 10px hsl(var(--primary) / 0.15);
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -120,6 +126,72 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  /* Theme Variants */
+  .theme-ocean {
+    --primary: 191 85% 40%;
+    --primary-glow: 191 85% 55%;
+    --secondary: 158 64% 52%;
+    --trust-blue: 191 85% 40%;
+    --trust-blue-light: 191 85% 55%;
+    --growth-green: 158 64% 52%;
+    --growth-green-light: 158 64% 65%;
+    --singapore-gold: 188 95% 68%;
+    --gradient-hero: linear-gradient(135deg, hsl(191 85% 40%), hsl(191 85% 55%));
+    --gradient-feature: linear-gradient(135deg, hsl(158 64% 52%), hsl(158 64% 65%));
+  }
+
+  .theme-forest {
+    --primary: 142 76% 36%;
+    --primary-glow: 142 76% 50%;
+    --secondary: 120 60% 50%;
+    --trust-blue: 142 76% 36%;
+    --trust-blue-light: 142 76% 50%;
+    --growth-green: 120 60% 50%;
+    --growth-green-light: 120 60% 65%;
+    --singapore-gold: 84 81% 44%;
+    --gradient-hero: linear-gradient(135deg, hsl(142 76% 36%), hsl(142 76% 50%));
+    --gradient-feature: linear-gradient(135deg, hsl(120 60% 50%), hsl(120 60% 65%));
+  }
+
+  .theme-sunset {
+    --primary: 24 95% 53%;
+    --primary-glow: 45 93% 58%;
+    --secondary: 0 84% 60%;
+    --trust-blue: 24 95% 53%;
+    --trust-blue-light: 45 93% 58%;
+    --growth-green: 0 84% 60%;
+    --growth-green-light: 14 91% 68%;
+    --singapore-gold: 45 93% 68%;
+    --gradient-hero: linear-gradient(135deg, hsl(24 95% 53%), hsl(45 93% 58%));
+    --gradient-feature: linear-gradient(135deg, hsl(0 84% 60%), hsl(14 91% 68%));
+  }
+
+  .theme-midnight {
+    --primary: 243 75% 59%;
+    --primary-glow: 262 83% 71%;
+    --secondary: 271 81% 71%;
+    --trust-blue: 243 75% 59%;
+    --trust-blue-light: 262 83% 71%;
+    --growth-green: 271 81% 71%;
+    --growth-green-light: 280 100% 80%;
+    --singapore-gold: 262 83% 78%;
+    --gradient-hero: linear-gradient(135deg, hsl(243 75% 59%), hsl(262 83% 71%));
+    --gradient-feature: linear-gradient(135deg, hsl(271 81% 71%), hsl(280 100% 80%));
+  }
+
+  .theme-purple {
+    --primary: 271 81% 56%;
+    --primary-glow: 270 95% 75%;
+    --secondary: 292 84% 61%;
+    --trust-blue: 271 81% 56%;
+    --trust-blue-light: 270 95% 75%;
+    --growth-green: 292 84% 61%;
+    --growth-green-light: 296 85% 73%;
+    --singapore-gold: 270 95% 82%;
+    --gradient-hero: linear-gradient(135deg, hsl(271 81% 56%), hsl(270 95% 75%));
+    --gradient-feature: linear-gradient(135deg, hsl(292 84% 61%), hsl(296 85% 73%));
   }
 }
 

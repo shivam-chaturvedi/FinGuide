@@ -98,7 +98,7 @@ export default function Remittances() {
                   <CardTitle className="flex items-center gap-2">
                     {provider.name}
                     {provider.trusted && (
-                      <Badge variant="secondary" className="bg-success/10 text-success">
+                      <Badge variant="secondary" className="bg-growth-green/10 text-growth-green border-growth-green/20">
                         <Shield className="h-3 w-3 mr-1" />
                         Trusted
                       </Badge>

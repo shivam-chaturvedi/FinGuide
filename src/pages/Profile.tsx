@@ -69,7 +69,7 @@ export default function Profile() {
               <div className="text-xs text-muted-foreground">Calculations</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-success">2</div>
+              <div className="text-2xl font-bold text-growth-green">2</div>
               <div className="text-xs text-muted-foreground">Achievements</div>
             </div>
           </div>

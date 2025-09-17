@@ -72,7 +72,7 @@ const categoryColors = {
 };
 
 const statusIcons = {
-  completed: <CheckCircle className="h-5 w-5 text-success" />,
+  completed: <CheckCircle className="h-5 w-5 text-growth-green" />,
   "in-progress": <Play className="h-5 w-5 text-primary" />,
   locked: <Lock className="h-5 w-5 text-muted-foreground" />
 };
