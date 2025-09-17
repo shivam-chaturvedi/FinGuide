@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,10 +45,10 @@ export function ProtectedRoute({ children, requireAuth = true }: ProtectedRouteP
           <CardContent className="space-y-4">
             <div className="flex flex-col gap-2">
               <Button asChild className="w-full">
-                <a href="/login">Sign In</a>
+                <Link to="/login">Sign In</Link>
               </Button>
               <Button asChild variant="outline" className="w-full">
-                <a href="/signup">Create Account</a>
+                <Link to="/signup">Create Account</Link>
               </Button>
             </div>
             <div className="text-center">

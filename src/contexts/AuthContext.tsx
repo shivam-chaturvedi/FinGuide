@@ -26,23 +26,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast()
 
   useEffect(() => {
+    let mounted = true
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return
+
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
         fetchUserProfile(session.user.id)
       }
       setLoading(false)
+    }).catch((error) => {
+      console.error('Error getting session:', error)
+      if (mounted) {
+        setLoading(false)
+      }
     })
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return
+
       setSession(session)
       setUser(session?.user ?? null)
-      
+
       if (session?.user) {
         await fetchUserProfile(session.user.id)
       } else {
@@ -51,7 +62,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    // Fallback timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      if (mounted) {
+        setLoading(false)
+      }
+    }, 5000)
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   const fetchUserProfile = async (userId: string) => {
@@ -211,13 +233,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setProfile(null)
       setSession(null)
 
-      // Navigate to home page after sign out
-      window.location.href = '/'
+      // Clear localStorage
+      localStorage.clear();
 
       toast({
         title: "Signed Out",
         description: "You have been successfully signed out.",
       })
+
+      // Navigate to home page using window.location
+      window.location.href = '/'
     } catch (error) {
       console.error('Error signing out:', error)
       toast({

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ export default function Profile() {
   const { user, profile, updateProfile, signOut } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     full_name: profile?.full_name || "",
@@ -68,6 +70,15 @@ export default function Profile() {
       financial_goals: profile?.financial_goals?.join(", ") || "",
     });
     setIsEditing(false);
+  };
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    localStorage.clear()
+
+    if (!error) {
+      navigate('/', { replace: true });
+    }
   };
 
   return (
@@ -338,7 +349,7 @@ export default function Profile() {
         <Button 
           variant="destructive" 
           className="w-full justify-start gap-3"
-          onClick={signOut}
+          onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4" />
           Sign Out

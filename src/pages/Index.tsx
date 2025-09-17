@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -21,34 +21,38 @@ const Index = () => {
   const { theme } = useTheme();
   const { theme: darkMode } = useNextTheme();
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const isDark = darkMode === 'dark';
 
   useEffect(() => {
-    // Redirect logged-in users to dashboard
+    // Only redirect if we're not loading and user exists
     if (!loading && user) {
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
       return;
     }
+  }, [user, loading]);
 
-    const observerOptions = {
-      threshold: 0.1,
-      rootMargin: '0px 0px -50px 0px'
-    };
+  useEffect(() => {
+    // Only set up animations if user is not logged in
+    if (!user) {
+      const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+      };
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
-      });
-    }, observerOptions);
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+          }
+        });
+      }, observerOptions);
 
-    const animateElements = document.querySelectorAll('.animate-on-scroll');
-    animateElements.forEach((el) => observer.observe(el));
+      const animateElements = document.querySelectorAll('.animate-on-scroll');
+      animateElements.forEach((el) => observer.observe(el));
 
-    return () => observer.disconnect();
-  }, [user, loading, navigate]);
+      return () => observer.disconnect();
+    }
+  }, [user]);
 
   // Show loading spinner while checking authentication
   if (loading) {
@@ -60,6 +64,11 @@ const Index = () => {
         </div>
       </div>
     );
+  }
+
+  // If user is logged in, don't render the landing page content
+  if (user) {
+    return null;
   }
 
   return (
