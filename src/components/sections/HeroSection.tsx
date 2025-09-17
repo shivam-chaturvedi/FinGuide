@@ -7,7 +7,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 
 const HeroSection = () => {
   const { t } = useLanguage();
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   
   return (
     <section className="relative min-h-screen flex items-center justify-center bg-gradient-hero overflow-hidden">

@@ -5,7 +5,7 @@ import { APP_CONFIG } from "@/config/app";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const CTASection = () => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   
   return (
     <section className="py-20 bg-gradient-hero text-primary-foreground overflow-hidden relative">

@@ -1,7 +1,20 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { User, Session, AuthError, PostgrestError } from '@supabase/supabase-js'
-import { supabase, UserProfile } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
+
+export interface UserProfile {
+  id: string
+  user_id: string
+  full_name: string
+  phone?: string
+  country: string
+  occupation: string
+  monthly_income?: number
+  financial_goals?: string[]
+  created_at: string
+  updated_at: string
+}
 
 interface AuthContextType {
   user: User | null

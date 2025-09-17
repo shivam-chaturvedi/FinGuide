@@ -4,7 +4,7 @@ import { APP_CONFIG } from "@/config/app";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const Footer = () => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   
   return (
     <footer className="bg-foreground text-background py-12">

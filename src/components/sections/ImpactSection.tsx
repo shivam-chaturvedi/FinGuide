@@ -3,7 +3,7 @@ import { APP_CONFIG } from "@/config/app";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const ImpactSection = () => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   
   return (
     <section className="py-20 bg-muted/30">

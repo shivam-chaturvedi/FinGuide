@@ -4,7 +4,7 @@ import { APP_CONFIG } from "@/config/app";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const FeaturesSection = () => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   
   const features = [
     {

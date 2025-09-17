@@ -73,11 +73,11 @@ export default function Profile() {
   };
 
   const handleSignOut = async () => {
-    const { error } = await signOut();
-    localStorage.clear()
-
-    if (!error) {
+    try {
+      await signOut();
       navigate('/', { replace: true });
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
