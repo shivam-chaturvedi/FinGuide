@@ -31,7 +31,7 @@ export function ThemeToggle() {
             <span className="text-sm font-medium hidden sm:inline">Theme</span>
           </Button>
         </SheetTrigger>
-      <SheetContent side="right" className="w-80">
+      <SheetContent side="right" className="w-80 h-screen overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Palette className="h-5 w-5" />
@@ -42,7 +42,7 @@ export function ThemeToggle() {
           </SheetDescription>
         </SheetHeader>
         
-        <div className="mt-6 space-y-4">
+        <div className="mt-6 space-y-4 max-h-[60vh] overflow-y-auto">
           {themes.map((themeOption) => (
             <div
               key={themeOption.id}
