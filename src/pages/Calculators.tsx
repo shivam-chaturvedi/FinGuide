@@ -415,7 +415,7 @@ export default function Calculators() {
                   {budget.expenses.remaining > 0 && (
                     <div className="p-3 bg-success/10 rounded-lg">
                       <p className="text-success font-semibold">
-                        ✅ Great! You have S${budget.expenses.remaining.toFixed(0)} left for discretionary spending.
+                        Great! You have S${budget.expenses.remaining.toFixed(0)} left for discretionary spending.
                       </p>
                     </div>
                   )}

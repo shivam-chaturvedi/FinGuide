@@ -54,23 +54,7 @@ const Index = () => {
     }
   }, [user]);
 
-  // Show loading spinner while checking authentication
-  if (loading) {
-    return (
-      <div className={`min-h-screen bg-background text-foreground flex items-center justify-center ${isDark ? 'dark' : ''} theme-${theme}`}>
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If user is logged in, don't render the landing page content
-  if (user) {
-    return null;
-  }
-
+  
   return (
     <div className={`min-h-screen bg-background text-foreground flex flex-col ${isDark ? 'dark' : ''} theme-${theme}`}>
       {/* Header */}
@@ -91,14 +75,14 @@ const Index = () => {
               </Button>
             </div>
           ) : (
-             <div className="flex items-center gap-2 ml-2">
-               <Button asChild size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                 <Link to="/login">{t('nav.login')}</Link>
-               </Button>
-               <Button asChild size="sm">
-                 <Link to="/signup">{t('nav.signup')}</Link>
-               </Button>
-             </div>
+            <div className="flex items-center gap-2 ml-2">
+              <Button asChild size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                <Link to="/login">{t('nav.login')}</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link to="/signup">{t('nav.signup')}</Link>
+              </Button>
+            </div>
           )}
         </div>
       </header>

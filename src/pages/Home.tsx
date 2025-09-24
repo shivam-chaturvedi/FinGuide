@@ -28,9 +28,6 @@ export default function Home() {
             <Button asChild variant="secondary" size="lg" className="shadow-soft">
               <Link to="/dashboard/modules">{t('nav.modules')}</Link>
             </Button>
-            <Button asChild  size="lg" className="border-white text-white hover:bg-white hover:text-primary">
-              <Link to="/signup">{t('nav.signup')}</Link>
-            </Button>
           </div>
         </div>
       </div>

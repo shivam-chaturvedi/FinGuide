@@ -7,9 +7,11 @@ export const createUserProfile = async (user: User) => {
   const profileData = {
     user_id: user.id,
     full_name: userData.full_name || user.email?.split('@')[0] || 'User',
-    phone: userData.phone || '',
-    country: 'Singapore',
-    occupation: 'Migrant Worker'
+    phone: userData.phone || null,
+    country: userData.country || 'Singapore',
+    occupation: userData.occupation || 'Migrant Worker',
+    monthly_income: userData.monthly_income || null,
+    financial_goals: userData.financial_goals || []
   }
 
   try {

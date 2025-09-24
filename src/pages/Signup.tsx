@@ -34,6 +34,7 @@ export default function Signup() {
     country: "",
     occupation: "",
     monthlyIncome: "",
+    financialGoals: "",
     language: "en"
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -52,6 +53,52 @@ export default function Signup() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate required fields
+    if (!formData.fullName.trim()) {
+      toast({
+        title: "Full Name Required",
+        description: "Please enter your full name.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.country) {
+      toast({
+        title: "Country Required",
+        description: "Please select your country.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.occupation.trim()) {
+      toast({
+        title: "Occupation Required",
+        description: "Please enter your occupation.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.monthlyIncome || parseInt(formData.monthlyIncome) <= 0) {
+      toast({
+        title: "Monthly Income Required",
+        description: "Please enter a valid monthly income.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Password Mismatch",
@@ -86,14 +133,32 @@ export default function Signup() {
         formData.email,
         formData.password,
         formData.fullName,
-        formData.phone
+        formData.phone,
+        formData.country,
+        formData.occupation,
+        formData.monthlyIncome ? parseInt(formData.monthlyIncome) : undefined,
+        formData.financialGoals ? formData.financialGoals.split(',').map(goal => goal.trim()) : []
       );
 
       if (!error) {
         toast({
           title: `Welcome to ${APP_CONFIG.name}! 🎉`,
-          description: "Please check your email to verify your account, then sign in.",
+          description: "Your account has been created successfully! Please check your email to verify your account, then sign in.",
         });
+        // Reset form
+        setFormData({
+          fullName: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+          phone: "",
+          country: "",
+          occupation: "",
+          monthlyIncome: "",
+          financialGoals: "",
+          language: "en"
+        });
+        setAgreeTerms(false);
         navigate("/login");
       }
     } catch (error) {
@@ -282,6 +347,66 @@ export default function Signup() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                {/* Occupation & Monthly Income Row */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="occupation" className="text-sm font-medium">
+                      Occupation *
+                    </Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="occupation"
+                        type="text"
+                        placeholder="e.g., Construction Worker"
+                        value={formData.occupation}
+                        onChange={(e) => handleInputChange("occupation", e.target.value)}
+                        className="pl-10 h-12"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="monthlyIncome" className="text-sm font-medium">
+                      Monthly Income (SGD) *
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-3 text-muted-foreground text-sm">$</span>
+                      <Input
+                        id="monthlyIncome"
+                        type="number"
+                        placeholder="2000"
+                        value={formData.monthlyIncome}
+                        onChange={(e) => handleInputChange("monthlyIncome", e.target.value)}
+                        className="pl-8 h-12"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Financial Goals */}
+                <div className="space-y-2">
+                  <Label htmlFor="financialGoals" className="text-sm font-medium">
+                    Financial Goals (Optional)
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="financialGoals"
+                      type="text"
+                      placeholder="e.g., Save for emergency fund, Send money home, Buy a house"
+                      value={formData.financialGoals}
+                      onChange={(e) => handleInputChange("financialGoals", e.target.value)}
+                      className="pl-10 h-12"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Separate multiple goals with commas
+                  </p>
                 </div>
 
                 {/* Password */}

@@ -22,7 +22,16 @@ interface AuthContextType {
   profile: UserProfile | null
   session: Session | null
   loading: boolean
-  signUp: (email: string, password: string, fullName: string, phone?: string) => Promise<{ error: AuthError | null }>
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string,
+    phone?: string,
+    country?: string,
+    occupation?: string,
+    monthlyIncome?: number,
+    financialGoals?: string[]
+  ) => Promise<{ error: AuthError | null }>
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signInWithPhone: (phone: string) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<void>
@@ -43,26 +52,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let mounted = true
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!mounted) return
 
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchUserProfile(session.user.id)
-      }
-      setLoading(false)
-    }).catch((error) => {
-      console.error('Error getting session:', error)
-      if (mounted) {
+        setSession(session)
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          fetchUserProfile(session.user.id)
+        }
         setLoading(false)
-      }
-    })
+      })
+      .catch((error) => {
+        console.error('Error getting session:', error)
+        if (mounted) setLoading(false)
+      })
 
     // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state change:', event, session?.user?.id)
       if (!mounted) return
 
@@ -70,22 +77,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(session?.user ?? null)
 
       if (session?.user) {
-        setTimeout(() => {
-          fetchUserProfile(session.user.id).finally(() => {
-            setLoading(false)
-          })
-        }, 0)
+        fetchUserProfile(session.user.id).finally(() => setLoading(false))
       } else {
         setProfile(null)
         setLoading(false)
       }
     })
 
-    // Fallback timeout to prevent infinite loading
+    // Fallback timeout
     const timeout = setTimeout(() => {
-      if (mounted) {
-        setLoading(false)
-      }
+      if (mounted) setLoading(false)
     }, 5000)
 
     return () => {
@@ -124,7 +125,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const signUp = async (email: string, password: string, fullName: string, phone?: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName: string,
+    phone?: string,
+    country?: string,
+    occupation?: string,
+    monthlyIncome?: number,
+    financialGoals?: string[]
+  ) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -132,40 +142,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         options: {
           data: {
             full_name: fullName,
-            phone: phone,
-          }
-        }
+            phone,
+            country,
+            occupation,
+            monthly_income: monthlyIncome,
+            financial_goals: financialGoals,
+          },
+        },
       })
 
       if (error) {
         toast({
           title: "Sign Up Failed",
           description: error.message,
-          variant: "destructive"
+          variant: "destructive",
         })
         return { error }
       }
 
-      if (data.user && data.user.user_metadata) {
-        // Create user profile using metadata
-        const userData = data.user.user_metadata;
-        const { error: profileError } = await supabase
+      if (data.user) {
+        // Create user profile with all form data and return it immediately
+        const { data: profileData, error: profileError } = await supabase
           .from('user_profiles')
-          .upsert({
-            user_id: data.user.id,
-            full_name: userData.full_name || fullName,
-            phone: userData.phone || phone,
-            country: 'Singapore',
-            occupation: 'Migrant Worker',
-          }, {
-            onConflict: 'user_id'
-          })
+          .upsert(
+            {
+              user_id: data.user.id,
+              full_name: fullName,
+              phone: phone || null,
+              country: country || 'Singapore',
+              occupation: occupation || 'Migrant Worker',
+              monthly_income: monthlyIncome || null,
+              financial_goals: financialGoals || [],
+            },
+            { onConflict: 'user_id' }
+          )
+          .select()
+          .single()
 
         if (profileError) {
           console.error('Error creating profile:', profileError)
+          toast({
+            title: "Profile Creation Failed",
+            description: "Account created but profile setup failed. Please update your profile after verification.",
+            variant: "destructive",
+          })
         } else {
-          // Fetch the created profile
-          setTimeout(() => fetchUserProfile(data.user.id), 100)
+          setProfile(profileData)
         }
 
         toast({
@@ -180,7 +202,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast({
         title: "Sign Up Failed",
         description: authError.message || "An unexpected error occurred",
-        variant: "destructive"
+        variant: "destructive",
       })
       return { error: authError }
     }
@@ -188,16 +210,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
 
       if (error) {
         toast({
           title: "Sign In Failed",
           description: error.message,
-          variant: "destructive"
+          variant: "destructive",
         })
         return { error }
       }
@@ -213,7 +232,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast({
         title: "Sign In Failed",
         description: authError.message || "An unexpected error occurred",
-        variant: "destructive"
+        variant: "destructive",
       })
       return { error: authError }
     }
@@ -221,15 +240,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithPhone = async (phone: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithOtp({
-        phone,
-      })
+      const { error } = await supabase.auth.signInWithOtp({ phone })
 
       if (error) {
         toast({
           title: "Phone Sign In Failed",
           description: error.message,
-          variant: "destructive"
+          variant: "destructive",
         })
         return { error }
       }
@@ -245,7 +262,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast({
         title: "Phone Sign In Failed",
         description: authError.message || "An unexpected error occurred",
-        variant: "destructive"
+        variant: "destructive",
       })
       return { error: authError }
     }
@@ -254,12 +271,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut()
-      
+
       if (error) {
         toast({
           title: "Sign Out Failed",
           description: error.message,
-          variant: "destructive"
+          variant: "destructive",
         })
         return
       }
@@ -268,22 +285,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setProfile(null)
       setSession(null)
 
-      // Clear localStorage
-      localStorage.clear();
+      localStorage.clear()
 
       toast({
         title: "Signed Out",
         description: "You have been successfully signed out.",
       })
 
-      // Navigate to home page using window.location
       window.location.href = '/'
     } catch (error) {
       console.error('Error signing out:', error)
       toast({
         title: "Sign Out Failed",
         description: "An unexpected error occurred",
-        variant: "destructive"
+        variant: "destructive",
       })
     }
   }
@@ -301,12 +316,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         toast({
           title: "Update Failed",
           description: error.message,
-          variant: "destructive"
+          variant: "destructive",
         })
         return { error }
       }
 
-      // Refresh profile data
       await fetchUserProfile(user.id)
 
       toast({
@@ -320,7 +334,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast({
         title: "Update Failed",
         description: authError.message || "An unexpected error occurred",
-        variant: "destructive"
+        variant: "destructive",
       })
       return { error: authError }
     }
@@ -336,7 +350,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         toast({
           title: "Reset Failed",
           description: error.message,
-          variant: "destructive"
+          variant: "destructive",
         })
         return { error }
       }
@@ -352,7 +366,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast({
         title: "Reset Failed",
         description: authError.message || "An unexpected error occurred",
-        variant: "destructive"
+        variant: "destructive",
       })
       return { error: authError }
     }
@@ -371,11 +385,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     resetPassword,
   }
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export const useAuth = () => {

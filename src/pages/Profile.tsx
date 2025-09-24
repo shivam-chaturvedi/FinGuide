@@ -73,6 +73,9 @@ export default function Profile() {
   };
 
   const handleSignOut = async () => {
+    if(confirm("Are you sure you want to sign out?")==false) {
+      return;
+    }
     try {
       await signOut();
       navigate('/', { replace: true });
@@ -117,7 +120,7 @@ export default function Profile() {
             </div>
             <Progress value={25} className="h-2" />
           </div>
-          
+
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Quizzes Passed</span>
@@ -125,7 +128,7 @@ export default function Profile() {
             </div>
             <Progress value={37.5} className="h-2" />
           </div>
-          
+
           <div className="grid grid-cols-3 gap-4 pt-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">25</div>
@@ -185,7 +188,7 @@ export default function Profile() {
                   />
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="country">Country</Label>
@@ -248,7 +251,7 @@ export default function Profile() {
                   <p className="text-sm">{profile?.phone || "Not set"}</p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Country</Label>
@@ -286,13 +289,12 @@ export default function Profile() {
         <CardContent>
           <div className="grid grid-cols-2 gap-3">
             {achievements.map((achievement, index) => (
-              <div 
-                key={index} 
-                className={`p-3 rounded-lg border text-center transition-colors ${
-                  achievement.earned 
-                    ? "bg-accent/50 border-accent-foreground/20" 
+              <div
+                key={index}
+                className={`p-3 rounded-lg border text-center transition-colors ${achievement.earned
+                    ? "bg-accent/50 border-accent-foreground/20"
                     : "bg-muted/50 border-muted opacity-60"
-                }`}
+                  }`}
               >
                 <div className="text-2xl mb-2">{achievement.icon}</div>
                 <h4 className="font-semibold text-sm">{achievement.title}</h4>
@@ -315,9 +317,8 @@ export default function Profile() {
           <div className="space-y-3">
             {recentActivity.map((activity, index) => (
               <div key={index} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className={`p-2 rounded-full ${
-                  activity.type === "module" ? "bg-primary/10" : "bg-secondary/10"
-                }`}>
+                <div className={`p-2 rounded-full ${activity.type === "module" ? "bg-primary/10" : "bg-secondary/10"
+                  }`}>
                   {activity.type === "module" ? (
                     <BookOpen className="h-4 w-4 text-primary" />
                   ) : (
@@ -338,16 +339,9 @@ export default function Profile() {
 
       {/* Settings */}
       <div className="space-y-3">
-        <Button variant="outline" className="w-full justify-start gap-3">
-          <Settings className="h-4 w-4" />
-          Account Settings
-        </Button>
-        <Button variant="outline" className="w-full justify-start gap-3">
-          <Globe className="h-4 w-4" />
-          Language Preferences
-        </Button>
-        <Button 
-          variant="destructive" 
+
+        <Button
+          variant="destructive"
           className="w-full justify-start gap-3"
           onClick={handleSignOut}
         >
