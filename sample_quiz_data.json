@@ -1,0 +1,128 @@
+{
+  "quiz_name": "Financial Basics Quiz",
+  "quiz_description": "Test your knowledge of fundamental financial concepts for migrant workers in Singapore",
+  "passing_score": 70,
+  "time_limit_minutes": 15,
+  "questions": [
+    {
+      "id": "q1",
+      "question": "What percentage of your income should you save for emergencies?",
+      "options": [
+        "5-10%",
+        "10-15%",
+        "20-30%",
+        "40-50%"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Financial experts recommend saving 10-15% of your income for emergency funds to cover unexpected expenses like medical bills or job loss."
+    },
+    {
+      "id": "q2",
+      "question": "Which expense should be prioritized in your monthly budget?",
+      "options": [
+        "Entertainment",
+        "Rent and utilities",
+        "Shopping",
+        "Dining out"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Rent and utilities are essential expenses that should be prioritized to maintain stable housing and basic living conditions."
+    },
+    {
+      "id": "q3",
+      "question": "What is the purpose of an emergency fund?",
+      "options": [
+        "To invest in stocks",
+        "To cover unexpected expenses",
+        "To buy luxury items",
+        "To pay for vacations"
+      ],
+      "correctAnswer": 1,
+      "explanation": "An emergency fund is specifically designed to cover unexpected expenses like medical emergencies, job loss, or urgent repairs."
+    },
+    {
+      "id": "q4",
+      "question": "What is the minimum amount you should have in your emergency fund?",
+      "options": [
+        "1 month of expenses",
+        "3-6 months of expenses",
+        "1 year of expenses",
+        "2 years of expenses"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Financial advisors recommend having 3-6 months of living expenses in your emergency fund to provide adequate financial security."
+    },
+    {
+      "id": "q5",
+      "question": "Which is the safest way to send money home to your family?",
+      "options": [
+        "Carrying cash",
+        "Using licensed remittance services",
+        "Sending through friends",
+        "Using unlicensed money changers"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Licensed remittance services are regulated by MAS (Monetary Authority of Singapore) and provide better protection and lower fees."
+    },
+    {
+      "id": "q6",
+      "question": "What should you do if you receive a suspicious call asking for your bank details?",
+      "options": [
+        "Provide the information immediately",
+        "Hang up and report to the bank",
+        "Ask for more details first",
+        "Call them back later"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Never provide bank details over the phone. Banks never ask for sensitive information via phone calls. Hang up and report to your bank immediately."
+    },
+    {
+      "id": "q7",
+      "question": "What is compound interest?",
+      "options": [
+        "Interest on your principal only",
+        "Interest earned on both principal and previously earned interest",
+        "Interest charged on loans",
+        "Interest paid monthly"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Compound interest is interest calculated on the initial principal and also on the accumulated interest of previous periods, helping your money grow faster."
+    },
+    {
+      "id": "q8",
+      "question": "Which document should you keep for tax purposes?",
+      "options": [
+        "Grocery receipts",
+        "Pay slips and CPF statements",
+        "Movie tickets",
+        "Restaurant bills"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Pay slips and CPF statements are important tax documents that you should keep for at least 7 years for tax filing purposes."
+    },
+    {
+      "id": "q9",
+      "question": "What is the maximum amount you can contribute to your CPF Special Account?",
+      "options": [
+        "No limit",
+        "S$37,740 per year",
+        "S$50,000 per year",
+        "S$100,000 per year"
+      ],
+      "correctAnswer": 1,
+      "explanation": "The CPF Special Account has an annual contribution limit of S$37,740 (as of 2024), which includes both employee and employer contributions."
+    },
+    {
+      "id": "q10",
+      "question": "What should you do if you can't pay your bills on time?",
+      "options": [
+        "Ignore them",
+        "Contact the company to arrange payment",
+        "Borrow from loan sharks",
+        "Use credit cards for everything"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Always contact the company or service provider to discuss payment arrangements. Most companies are willing to work with you to find a solution."
+    }
+  ]
+}

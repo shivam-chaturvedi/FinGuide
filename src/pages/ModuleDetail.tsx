@@ -551,26 +551,34 @@ export default function ModuleDetail() {
   }
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-3 sm:p-4 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="space-y-4">
+        {/* Back Button - Full width on mobile */}
         <Button
           variant="outline"
           size="sm"
           onClick={() => navigate('/dashboard/modules')}
+          className="w-full sm:w-auto"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Modules
         </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold">{moduleData.title}</h1>
-          <p className="text-muted-foreground">{moduleData.description}</p>
+        
+        {/* Title and Description */}
+        <div className="space-y-2">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight">
+            {moduleData.title}
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+            {moduleData.description}
+          </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* Module Content */}
           <Card>
             <CardHeader>
@@ -662,20 +670,20 @@ export default function ModuleDetail() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Module Info */}
           <Card>
             <CardHeader>
               <h3 className="font-semibold">Course Information</h3>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{moduleData.level}</Badge>
-                <Badge variant="outline">{moduleData.category}</Badge>
-                <Badge variant="outline">{moduleData.price}</Badge>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="text-xs">{moduleData.level}</Badge>
+                <Badge variant="outline" className="text-xs">{moduleData.category}</Badge>
+                <Badge variant="outline" className="text-xs">{moduleData.price}</Badge>
               </div>
               
-              <div className="space-y-3 text-sm">
+              <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Duration:</span>
                   <span>{moduleData.duration_weeks} weeks</span>
@@ -776,17 +784,17 @@ export default function ModuleDetail() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <HelpCircle className="h-5 w-5 text-purple-500" />
-                  <h3 className="font-semibold">Quiz: {quizData.name}</h3>
+                  <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
+                  <h3 className="font-semibold text-sm sm:text-base">Quiz: {quizData.name}</h3>
                 </div>
-                <p className="text-sm text-muted-foreground">{quizData.description}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{quizData.description}</p>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between text-sm">
+                <div className="grid grid-cols-2 sm:flex sm:items-center sm:justify-between text-xs sm:text-sm gap-2">
                   <span>Questions: {quizData.questions.length}</span>
-                  <span>Passing Score: {quizData.passing_score}%</span>
+                  <span>Passing: {quizData.passing_score}%</span>
                   {quizData.time_limit_minutes && (
-                    <span>Time Limit: {quizData.time_limit_minutes} min</span>
+                    <span className="col-span-2 sm:col-span-1">Time: {quizData.time_limit_minutes} min</span>
                   )}
                 </div>
                 
@@ -804,15 +812,15 @@ export default function ModuleDetail() {
                     {!showQuizResults ? (
                       <div className="space-y-4">
                         {quizData.questions.map((question, index) => (
-                          <div key={question.id} className="border rounded-lg p-4">
-                            <h4 className="font-medium mb-3">
+                          <div key={question.id} className="border rounded-lg p-3 sm:p-4">
+                            <h4 className="font-medium mb-3 text-sm sm:text-base leading-tight">
                               {index + 1}. {question.question}
                             </h4>
                             <div className="space-y-2">
                               {question.options.map((option, optionIndex) => (
                                 <label
                                   key={optionIndex}
-                                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                  className="flex items-start gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer"
                                 >
                                   <input
                                     type="radio"
@@ -820,9 +828,9 @@ export default function ModuleDetail() {
                                     value={optionIndex}
                                     checked={quizAnswers[question.id] === optionIndex}
                                     onChange={() => handleQuizAnswer(question.id, optionIndex)}
-                                    className="h-4 w-4 text-primary"
+                                    className="h-4 w-4 text-primary mt-0.5 flex-shrink-0"
                                   />
-                                  <span className="text-sm">{option}</span>
+                                  <span className="text-xs sm:text-sm leading-relaxed">{option}</span>
                                 </label>
                               ))}
                             </div>
@@ -847,14 +855,14 @@ export default function ModuleDetail() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <div className="text-center p-6 bg-gray-50 rounded-lg">
-                          <div className="text-3xl font-bold text-primary mb-2">
+                        <div className="text-center p-4 sm:p-6 bg-gray-50 rounded-lg">
+                          <div className="text-2xl sm:text-3xl font-bold text-primary mb-2">
                             {quizScore}%
                           </div>
-                          <div className="text-lg font-medium mb-2">
+                          <div className="text-base sm:text-lg font-medium mb-2">
                             {quizScore && quizScore >= quizData.passing_score ? 'Quiz Passed!' : 'Quiz Failed'}
                           </div>
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                             {quizScore && quizScore >= quizData.passing_score 
                               ? 'Congratulations! You have successfully completed the quiz.'
                               : `You need ${quizData.passing_score}% to pass. Try again to improve your score.`
@@ -863,30 +871,30 @@ export default function ModuleDetail() {
                         </div>
                         
                         <div className="space-y-3">
-                          <h4 className="font-medium">Review Answers:</h4>
+                          <h4 className="font-medium text-sm sm:text-base">Review Answers:</h4>
                           {quizData.questions.map((question, index) => {
                             const userAnswer = quizAnswers[question.id];
                             const isCorrect = userAnswer === question.correctAnswer;
                             return (
                               <div key={question.id} className="border rounded-lg p-3">
-                                <div className="flex items-start justify-between mb-2">
-                                  <h5 className="font-medium text-sm">
+                                <div className="flex items-start justify-between mb-2 gap-2">
+                                  <h5 className="font-medium text-xs sm:text-sm leading-tight flex-1">
                                     {index + 1}. {question.question}
                                   </h5>
-                                  <div className={`px-2 py-1 rounded text-xs ${
+                                  <div className={`px-2 py-1 rounded text-xs flex-shrink-0 ${
                                     isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                                   }`}>
                                     {isCorrect ? 'Correct' : 'Incorrect'}
                                   </div>
                                 </div>
-                                <div className="space-y-1 text-sm">
+                                <div className="space-y-1 text-xs sm:text-sm">
                                   <div className="text-muted-foreground">
-                                    Your answer: {userAnswer !== undefined ? question.options[userAnswer] : 'Not answered'}
+                                    <span className="font-medium">Your answer:</span> {userAnswer !== undefined ? question.options[userAnswer] : 'Not answered'}
                                   </div>
                                   <div className="text-muted-foreground">
-                                    Correct answer: {question.options[question.correctAnswer]}
+                                    <span className="font-medium">Correct answer:</span> {question.options[question.correctAnswer]}
                                   </div>
-                                  <div className="text-muted-foreground italic">
+                                  <div className="text-muted-foreground italic leading-relaxed">
                                     {question.explanation}
                                   </div>
                                 </div>
