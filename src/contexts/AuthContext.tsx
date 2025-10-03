@@ -13,6 +13,7 @@ export interface UserProfile {
   occupation: string
   monthly_income?: number
   financial_goals?: string[]
+  role: string
   created_at: string
   updated_at: string
 }
@@ -22,6 +23,7 @@ interface AuthContextType {
   profile: UserProfile | null
   session: Session | null
   loading: boolean
+  isAdmin: boolean
   signUp: (
     email: string,
     password: string,
@@ -47,6 +49,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+
+  // Check if current user is admin
+  const isAdmin = profile?.role === 'admin' || user?.email === 'admin@gmail.com'
 
   useEffect(() => {
     let mounted = true
@@ -377,6 +382,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     profile,
     session,
     loading,
+    isAdmin,
     signUp,
     signIn,
     signInWithPhone,

@@ -10,6 +10,7 @@ import { Mail, Lock, Eye, EyeOff, Smartphone, ArrowLeft, Shield } from "lucide-r
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { Logo } from "@/components/Logo";
 import { APP_CONFIG } from "@/config/app";
 
 export default function Login() {
@@ -21,7 +22,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { signIn, user } = useAuth();
+  const { signIn, user, isAdmin } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +31,7 @@ export default function Login() {
     try {
       const { error } = await signIn(email, password);
       if (!error) {
+        // All users go to dashboard by default
         navigate("/dashboard");
       }
     } catch (error) {
@@ -40,19 +42,6 @@ export default function Login() {
   };
 
 
-  const handleForgotPassword = async () => {
-    if (!email) {
-      toast({
-        title: "Email Required",
-        description: "Please enter your email address first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const { resetPassword } = useAuth();
-    await resetPassword(email);
-  };
 
   return (
     <div className="min-h-screen bg-gradient-auth flex items-center justify-center p-4">
@@ -71,9 +60,9 @@ export default function Login() {
         </div>
 
         {/* Logo & Branding */}
-        <div className="text-center text-white space-y-2">
-          <div className="w-16 h-16 mx-auto bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
-            <Shield className="h-8 w-8" />
+        <div className="text-center text-white space-y-4">
+          <div className="flex justify-center">
+            <Logo size="xl" showText={true} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold">{t('login.welcome')}</h1>
           <p className="text-white/80">{t('login.subtitle')}</p>
@@ -135,23 +124,14 @@ export default function Login() {
                     </div>
                   </div>
 
-                  {/* Remember Me & Forgot Password */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="remember"
-                        checked={rememberMe}
-                        onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                      />
-                      <Label htmlFor="remember" className="text-sm">{t('login.remember')}</Label>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleForgotPassword}
-                      className="text-sm text-primary hover:underline font-medium"
-                    >
-                      {t('login.forgot')}
-                    </button>
+                  {/* Remember Me */}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="remember"
+                      checked={rememberMe}
+                      onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                    />
+                    <Label htmlFor="remember" className="text-sm">{t('login.remember')}</Label>
                   </div>
 
                   {/* Login Button */}

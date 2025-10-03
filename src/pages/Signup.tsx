@@ -6,19 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { User, Mail, Lock, Eye, EyeOff, Globe, ArrowLeft, Shield, Check } from "lucide-react";
+import { User, Mail, Lock, Eye, EyeOff, Globe, ArrowLeft, Shield, Check, Flag, MapPin, Briefcase, DollarSign, Target, Languages } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { Logo } from "@/components/Logo";
 import { APP_CONFIG } from "@/config/app";
 
 const countries = APP_CONFIG.supportedCountries.map((country, index) => {
-  const flags = ["🇮🇳", "🇵🇭", "🇨🇳", "🇧🇩", "🇲🇲", "🇹🇭", "🇻🇳"];
   const codes = ["IN", "PH", "CN", "BD", "MM", "TH", "VN"];
   return {
     code: codes[index] || "XX",
     name: country,
-    flag: flags[index] || "🌍"
+    flag: <Flag className="h-4 w-4" />
   };
 });
 
@@ -186,8 +186,8 @@ export default function Signup() {
             </Button>
             
             <div className="space-y-4">
-              <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
-                <Shield className="h-8 w-8" />
+              <div className="flex justify-center">
+                <Logo size="xl" showText={true} className="text-white" />
               </div>
               <h1 className="text-4xl font-bold">Join {APP_CONFIG.name}</h1>
               <p className="text-xl text-white/80 leading-relaxed">
@@ -340,10 +340,30 @@ export default function Signup() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="en">🇬🇧 English</SelectItem>
-                        <SelectItem value="cn">🇨🇳 中文</SelectItem>
-                        <SelectItem value="hi">🇮🇳 हिन्दी</SelectItem>
-                        <SelectItem value="tl">🇵🇭 Tagalog</SelectItem>
+                        <SelectItem value="en">
+                          <div className="flex items-center gap-2">
+                            <Flag className="h-4 w-4" />
+                            English
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="cn">
+                          <div className="flex items-center gap-2">
+                            <Flag className="h-4 w-4" />
+                            中文
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="hi">
+                          <div className="flex items-center gap-2">
+                            <Flag className="h-4 w-4" />
+                            हिन्दी
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="tl">
+                          <div className="flex items-center gap-2">
+                            <Flag className="h-4 w-4" />
+                            Tagalog
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

@@ -1,13 +1,14 @@
 import { Outlet, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { BottomNavigation } from "./BottomNavigation";
-import { LanguageToggle } from "./LanguageToggle";
 import { ThemeToggle } from "./ThemeToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { Logo } from "@/components/Logo";
 import { LogOut, User, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import GoogleTranslate from "./GoogleTranslate";
 
 export function Layout() {
   const location = useLocation();
@@ -25,14 +26,12 @@ export function Layout() {
       {/* Enhanced Responsive Header */}
       <header className="bg-card border-b border-border p-3 sm:p-4 flex justify-between items-center shadow-sm">
         {/* Logo */}
-        <h1 className="text-lg sm:text-xl font-bold bg-gradient-primary bg-clip-text text-transparent truncate">
-          {t('app.name')}
-        </h1>
+        <Logo size="sm" showText={true} className="truncate" />
         
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-2">
           <ThemeToggle />
-          <LanguageToggle />
+          <GoogleTranslate />
           {user ? (
             <div className="flex items-center gap-2 ml-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -70,7 +69,7 @@ export function Layout() {
         {/* Mobile Menu */}
         <div className="md:hidden flex items-center gap-2">
           <ThemeToggle />
-          <LanguageToggle />
+          <GoogleTranslate />
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="sm">

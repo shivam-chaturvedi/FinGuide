@@ -6,9 +6,28 @@
 All colors MUST be HSL.
 */
 
+
+/* Hide Google Translate top banner */
+.goog-te-banner-frame.skiptranslate {
+  display: none !important;
+}
+
+
+/* Hide Google logo link in widget dropdown */
+.goog-logo-link {
+  display: none !important;
+}
+
+/* Hide any Google text in the gadget */
+.goog-te-gadget span {
+  display: none !important;
+}
+
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Creative Growth Theme */
+    --background: 220 13% 95%; /* #F3F4F6 - light gray for balance */
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -17,47 +36,47 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    /* Trust Blue - Primary brand color */
-    --primary: 212 97% 48%;
+    /* Forest Green - Primary brand color */
+    --primary: 142 76% 36%; /* Forest Green for growth and nature */
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 212 97% 65%;
+    --primary-glow: 142 76% 50%;
 
-    /* Growth Green - Secondary accent */
-    --secondary: 142 76% 36%;
+    /* Complementary Green - Accent color */
+    --secondary: 120 60% 50%; /* Complementary green for harmony */
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
+    --muted: 220 13% 90%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 120 60% 90%; /* Light green accent */
+    --accent-foreground: 142 76% 15%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 212 97% 48%;
+    --border: 220 13% 85%;
+    --input: 220 13% 85%;
+    --ring: 142 76% 36%;
 
     --radius: 0.5rem;
 
-    /* Custom financial app colors */
-    --trust-blue: 212 97% 48%;
-    --trust-blue-light: 212 97% 65%;
-    --growth-green: 142 76% 36%;
-    --growth-green-light: 142 76% 50%;
-    --singapore-gold: 45 93% 58%;
+    /* Creative Growth theme colors */
+    --creative-purple: 271 81% 56%; /* #8B5CF6 */
+    --creative-purple-light: 271 81% 70%;
+    --golden-yellow: 45 93% 58%; /* #FBBF24 */
+    --golden-yellow-light: 45 93% 70%;
+    --light-gray: 220 13% 95%; /* #F3F4F6 */
     
     /* Gradients */
-    --gradient-hero: linear-gradient(135deg, hsl(var(--trust-blue)), hsl(var(--trust-blue-light)));
+    --gradient-hero: linear-gradient(135deg, hsl(var(--creative-purple)), hsl(var(--creative-purple-light)));
     --gradient-card: linear-gradient(145deg, hsl(var(--background)), hsl(var(--muted)));
-    --gradient-feature: linear-gradient(135deg, hsl(var(--growth-green)), hsl(var(--growth-green-light)));
+    --gradient-feature: linear-gradient(135deg, hsl(var(--golden-yellow)), hsl(var(--golden-yellow-light)));
     --gradient-auth: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
 
     /* Shadows */
-    --shadow-card: 0 4px 20px hsl(var(--trust-blue) / 0.1);
-    --shadow-hero: 0 20px 40px hsl(var(--trust-blue) / 0.2);
-    --shadow-feature: 0 8px 25px hsl(var(--growth-green) / 0.15);
+    --shadow-card: 0 4px 20px hsl(var(--creative-purple) / 0.1);
+    --shadow-hero: 0 20px 40px hsl(var(--creative-purple) / 0.2);
+    --shadow-feature: 0 8px 25px hsl(var(--golden-yellow) / 0.15);
     --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.4);
     --shadow-soft: 0 2px 10px hsl(var(--primary) / 0.1);
 
@@ -81,12 +100,12 @@ All colors MUST be HSL.
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 212 97% 58%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --primary-glow: 212 97% 70%;
+    --primary: 142 76% 50%; /* Brighter forest green for dark mode */
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 142 76% 65%;
 
-    --secondary: 142 76% 45%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 120 60% 60%; /* Brighter green for dark mode */
+    --secondary-foreground: 0 0% 100%;
 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
@@ -99,22 +118,22 @@ All colors MUST be HSL.
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212 97% 58%;
+    --ring: 142 76% 50%;
 
-    --trust-blue: 212 97% 58%;
-    --trust-blue-light: 212 97% 70%;
-    --growth-green: 142 76% 45%;
-    --growth-green-light: 142 76% 55%;
-    --singapore-gold: 45 93% 65%;
+    --creative-purple: 271 81% 65%;
+    --creative-purple-light: 271 81% 75%;
+    --golden-yellow: 45 93% 65%;
+    --golden-yellow-light: 45 93% 75%;
+    --light-gray: 220 13% 10%;
 
-    --gradient-hero: linear-gradient(135deg, hsl(var(--trust-blue)), hsl(var(--trust-blue-light)));
+    --gradient-hero: linear-gradient(135deg, hsl(var(--creative-purple)), hsl(var(--creative-purple-light)));
     --gradient-card: linear-gradient(145deg, hsl(var(--background)), hsl(var(--muted)));
-    --gradient-feature: linear-gradient(135deg, hsl(var(--growth-green)), hsl(var(--growth-green-light)));
+    --gradient-feature: linear-gradient(135deg, hsl(var(--golden-yellow)), hsl(var(--golden-yellow-light)));
     --gradient-auth: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
 
-    --shadow-card: 0 4px 20px hsl(var(--trust-blue) / 0.15);
-    --shadow-hero: 0 20px 40px hsl(var(--trust-blue) / 0.25);
-    --shadow-feature: 0 8px 25px hsl(var(--growth-green) / 0.2);
+    --shadow-card: 0 4px 20px hsl(var(--creative-purple) / 0.15);
+    --shadow-hero: 0 20px 40px hsl(var(--creative-purple) / 0.25);
+    --shadow-feature: 0 8px 25px hsl(var(--golden-yellow) / 0.2);
     --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.4);
     --shadow-soft: 0 2px 10px hsl(var(--primary) / 0.15);
 
@@ -197,6 +216,40 @@ All colors MUST be HSL.
     --border: 271 81% 20%;
     --input: 271 81% 20%;
     --gradient-card: linear-gradient(145deg, hsl(271 81% 10%), hsl(271 81% 15%));
+  }
+
+  /* Creative Growth Theme (Default) */
+  .theme-creative-growth {
+    --primary: 271 81% 56%; /* #8B5CF6 */
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 271 81% 70%;
+    --secondary: 45 93% 58%; /* #FBBF24 */
+    --secondary-foreground: 0 0% 100%;
+    --creative-purple: 271 81% 56%;
+    --creative-purple-light: 271 81% 70%;
+    --golden-yellow: 45 93% 58%;
+    --golden-yellow-light: 45 93% 70%;
+    --light-gray: 220 13% 95%; /* #F3F4F6 */
+    --gradient-hero: linear-gradient(135deg, hsl(271 81% 56%), hsl(271 81% 70%));
+    --gradient-feature: linear-gradient(135deg, hsl(45 93% 58%), hsl(45 93% 70%));
+    --gradient-auth: linear-gradient(135deg, hsl(271 81% 56%), hsl(271 81% 70%));
+    --gradient-card: linear-gradient(145deg, hsl(271 81% 95%), hsl(45 93% 90%));
+    --background: 220 13% 95%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --muted: 220 13% 90%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 45 93% 90%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --border: 220 13% 85%;
+    --input: 220 13% 85%;
+    --ring: 271 81% 56%;
+    --shadow-card: 0 4px 20px hsl(271 81% 56% / 0.1);
+    --shadow-hero: 0 20px 40px hsl(271 81% 56% / 0.2);
+    --shadow-feature: 0 8px 25px hsl(45 93% 58% / 0.15);
+    --shadow-glow: 0 0 40px hsl(271 81% 70% / 0.4);
+    --shadow-soft: 0 2px 10px hsl(271 81% 56% / 0.1);
   }
 
   /* Theme Variants */
@@ -465,41 +518,41 @@ All colors MUST be HSL.
     box-shadow: var(--shadow-soft);
   }
   
-  /* Color utilities */
-  .text-trust-blue {
-    color: hsl(var(--trust-blue));
+  /* Creative Growth Color utilities */
+  .text-creative-purple {
+    color: hsl(var(--creative-purple));
   }
   
-  .text-growth-green {
-    color: hsl(var(--growth-green));
+  .text-golden-yellow {
+    color: hsl(var(--golden-yellow));
   }
   
-  .text-singapore-gold {
-    color: hsl(var(--singapore-gold));
+  .text-light-gray {
+    color: hsl(var(--light-gray));
   }
   
-  .bg-trust-blue {
-    background-color: hsl(var(--trust-blue));
+  .bg-creative-purple {
+    background-color: hsl(var(--creative-purple));
   }
   
-  .bg-growth-green {
-    background-color: hsl(var(--growth-green));
+  .bg-golden-yellow {
+    background-color: hsl(var(--golden-yellow));
   }
   
-  .bg-singapore-gold {
-    background-color: hsl(var(--singapore-gold));
+  .bg-light-gray {
+    background-color: hsl(var(--light-gray));
   }
   
-  .border-trust-blue {
-    border-color: hsl(var(--trust-blue));
+  .border-creative-purple {
+    border-color: hsl(var(--creative-purple));
   }
   
-  .border-growth-green {
-    border-color: hsl(var(--growth-green));
+  .border-golden-yellow {
+    border-color: hsl(var(--golden-yellow));
   }
   
-  .border-singapore-gold {
-    border-color: hsl(var(--singapore-gold));
+  .border-light-gray {
+    border-color: hsl(var(--light-gray));
   }
   
   /* Theme-specific background patterns */

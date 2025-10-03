@@ -570,36 +570,6 @@ export default function Remittances() {
         </div>
       </div>
 
-      {/* User Progress */}
-      {user && (
-        <Card className="bg-gradient-to-r from-primary/10 to-secondary/10">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5" />
-              {t('remittances.yourProgress', 'Your Remittance Journey')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{t('remittances.learningProgress', 'Learning Progress')}</span>
-                <span className="text-sm text-muted-foreground">75%</span>
-              </div>
-              <Progress value={75} className="h-2" />
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-primary">3</div>
-                  <div className="text-sm text-muted-foreground">{t('remittances.modulesCompleted', 'Modules Completed')}</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-secondary">$2,500</div>
-                  <div className="text-sm text-muted-foreground">{t('remittances.savedThisMonth', 'Saved This Month')}</div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

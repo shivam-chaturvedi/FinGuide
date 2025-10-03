@@ -8,23 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { User, Settings, BookOpen, Calculator, Trophy, Globe, LogOut, Edit, Save, X } from "lucide-react";
+import { User, Settings, Globe, LogOut, Edit, Save, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 
-const achievements = [
-  { icon: "🎯", title: "First Module", description: "Completed your first learning module", earned: true },
-  { icon: "💰", title: "Budget Master", description: "Created your first budget plan", earned: true },
-  { icon: "📊", title: "Calculator Pro", description: "Used all financial calculators", earned: false },
-  { icon: "🏆", title: "Quiz Champion", description: "Passed all module quizzes", earned: false },
-];
-
-const recentActivity = [
-  { action: "Completed", item: "Understanding Money module", date: "2 days ago", type: "module" },
-  { action: "Used", item: "Budget Calculator", date: "3 days ago", type: "calculator" },
-  { action: "Started", item: "Creating a Budget module", date: "1 week ago", type: "module" },
-];
 
 export default function Profile() {
   const { user, profile, updateProfile, signOut } = useAuth();
@@ -32,6 +20,7 @@ export default function Profile() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editData, setEditData] = useState({
     full_name: profile?.full_name || "",
     phone: profile?.phone || "",
@@ -42,6 +31,7 @@ export default function Profile() {
   });
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       const { error } = await updateProfile({
         full_name: editData.full_name,
@@ -54,9 +44,26 @@ export default function Profile() {
 
       if (!error) {
         setIsEditing(false);
+        toast({
+          title: "Profile Updated",
+          description: "Your profile has been updated successfully.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update profile. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error updating profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -103,48 +110,6 @@ export default function Profile() {
         </Badge>
       </div>
 
-      {/* Learning Progress */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-primary" />
-            Learning Progress
-          </CardTitle>
-          <CardDescription>Your financial education journey</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Modules Completed</span>
-              <span className="text-sm text-muted-foreground">2 of 8</span>
-            </div>
-            <Progress value={25} className="h-2" />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Quizzes Passed</span>
-              <span className="text-sm text-muted-foreground">3 of 8</span>
-            </div>
-            <Progress value={37.5} className="h-2" />
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">25</div>
-              <div className="text-xs text-muted-foreground">Study Hours</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-secondary">12</div>
-              <div className="text-xs text-muted-foreground">Calculations</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-growth-green">2</div>
-              <div className="text-xs text-muted-foreground">Achievements</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Profile Information */}
       <Card>
@@ -229,9 +194,18 @@ export default function Profile() {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={handleSave} size="sm">
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Changes
+                <Button onClick={handleSave} size="sm" disabled={isSaving}>
+                  {isSaving ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                      Saving...
+                    </div>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
                 </Button>
                 <Button onClick={handleCancel} variant="outline" size="sm">
                   <X className="h-4 w-4 mr-2" />
@@ -277,65 +251,6 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* Achievements */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-secondary" />
-            Achievements
-          </CardTitle>
-          <CardDescription>Unlock badges as you learn</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3">
-            {achievements.map((achievement, index) => (
-              <div
-                key={index}
-                className={`p-3 rounded-lg border text-center transition-colors ${achievement.earned
-                    ? "bg-accent/50 border-accent-foreground/20"
-                    : "bg-muted/50 border-muted opacity-60"
-                  }`}
-              >
-                <div className="text-2xl mb-2">{achievement.icon}</div>
-                <h4 className="font-semibold text-sm">{achievement.title}</h4>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {achievement.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>Your learning history</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {recentActivity.map((activity, index) => (
-              <div key={index} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className={`p-2 rounded-full ${activity.type === "module" ? "bg-primary/10" : "bg-secondary/10"
-                  }`}>
-                  {activity.type === "module" ? (
-                    <BookOpen className="h-4 w-4 text-primary" />
-                  ) : (
-                    <Calculator className="h-4 w-4 text-secondary" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm">
-                    <span className="font-medium">{activity.action}</span> {activity.item}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{activity.date}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Settings */}
       <div className="space-y-3">

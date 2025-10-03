@@ -11,7 +11,8 @@ export const createUserProfile = async (user: User) => {
     country: userData.country || 'Singapore',
     occupation: userData.occupation || 'Migrant Worker',
     monthly_income: userData.monthly_income || null,
-    financial_goals: userData.financial_goals || []
+    financial_goals: userData.financial_goals || [],
+    role: user.email === 'admin@gmail.com' ? 'admin' : 'user'
   }
 
   try {

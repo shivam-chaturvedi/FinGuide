@@ -36,7 +36,7 @@ const HeroSection = () => {
                 <Button asChild variant="hero" size="xl" className="text-lg font-semibold">
                   <Link to="/signup">{t('hero.signup')}</Link>
                 </Button>
-                <Button asChild variant="outline-hero" size="xl" className="text-lg bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700">
+                <Button asChild variant="outline-hero" size="xl" className="text-lg bg-primary hover:bg-primary/90 text-white border-primary hover:border-primary/90">
                   <Link to="/login">{t('hero.login')}</Link>
                 </Button>
               </div>
@@ -53,10 +53,10 @@ const HeroSection = () => {
           </div>
           
               {/* Floating Elements */}
-              <div className="absolute -top-4 -right-4 bg-singapore-gold text-white px-4 py-2 rounded-full text-sm font-semibold animate-float animation-delay-500">
+              <div className="absolute -top-4 -right-4 bg-golden-yellow text-white px-4 py-2 rounded-full text-sm font-semibold animate-float animation-delay-500">
                 {t('hero.saveMoney')}
               </div>
-              <div className="absolute -bottom-4 -left-4 bg-growth-green text-white px-4 py-2 rounded-full text-sm font-semibold animate-float animation-delay-1000">
+              <div className="absolute -bottom-4 -left-4 bg-secondary text-white px-4 py-2 rounded-full text-sm font-semibold animate-float animation-delay-1000">
                 {t('hero.easyUse')}
               </div>
         </div>

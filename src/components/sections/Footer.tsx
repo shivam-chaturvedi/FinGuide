@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Globe } from "lucide-react";
+import { Globe, MapPin, Users } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -29,10 +29,10 @@ const Footer = () => {
           <div>
             <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Quick Links</h4>
             <ul className="space-y-2 text-background/80">
-              <li><a href="#about" className="hover:text-singapore-gold transition-colors text-sm sm:text-base">About</a></li>
-              <li><a href="#features" className="hover:text-singapore-gold transition-colors text-sm sm:text-base">Features</a></li>
-              <li><a href="#help" className="hover:text-singapore-gold transition-colors text-sm sm:text-base">Help/FAQ</a></li>
-              <li><a href="#contact" className="hover:text-singapore-gold transition-colors text-sm sm:text-base">Contact</a></li>
+              <li><a href="#about" className="hover:text-golden-yellow transition-colors text-sm sm:text-base">About</a></li>
+              <li><a href="#features" className="hover:text-golden-yellow transition-colors text-sm sm:text-base">Features</a></li>
+              <li><a href="#help" className="hover:text-golden-yellow transition-colors text-sm sm:text-base">Help/FAQ</a></li>
+              <li><a href="#contact" className="hover:text-golden-yellow transition-colors text-sm sm:text-base">Contact</a></li>
             </ul>
           </div>
           
@@ -45,8 +45,14 @@ const Footer = () => {
             </Button>
             
             <div className="text-xs sm:text-sm text-background/60 space-y-1">
-              <p>🇸🇬 Made in Singapore</p>
-              <p>🌏 For workers worldwide</p>
+              <p className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                Made in Singapore
+              </p>
+              <p className="flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                For workers worldwide
+              </p>
             </div>
           </div>
         </div>

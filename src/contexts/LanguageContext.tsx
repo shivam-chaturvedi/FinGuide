@@ -35,11 +35,6 @@ const translateText = async (text: string, targetLang: string): Promise<string> 
     'Budget planner and savings calculator': { 'zh': '预算规划师和储蓄计算器' },
     'Safe Remittances': { 'zh': '安全汇款' },
     'Send money home safely and affordably': { 'zh': '安全实惠地汇款回家' },
-    'Tip of the Day': { 'zh': '今日小贴士' },
-    'Your Learning Progress': { 'zh': '您的学习进度' },
-    'Keep up the great work!': { 'zh': '继续努力！' },
-    'Modules Completed': { 'zh': '已完成模块' },
-    'Quizzes Passed': { 'zh': '已通过测验' },
   };
 
   // Check fallback translations first
@@ -216,12 +211,6 @@ const englishTexts = {
   'home.calculators.desc': 'Budget planner and savings calculator',
   'home.remittances.title': 'Safe Remittances',
   'home.remittances.desc': 'Send money home safely and affordably',
-  'home.tip.title': 'Tip of the Day',
-  'home.tip.text': 'Start with the 50/30/20 rule: 50% for needs, 30% for wants, and 20% for savings. This simple budgeting method helps you build financial stability.',
-  'home.progress.title': 'Your Learning Progress',
-  'home.progress.desc': 'Keep up the great work!',
-  'home.progress.modules': 'Modules Completed',
-  'home.progress.quizzes': 'Quizzes Passed',
   
   // Login Page
   'login.welcome': 'Welcome Back',

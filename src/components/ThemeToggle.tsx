@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Palette, Check, Moon, Sun } from "lucide-react";
+import { Palette, Check, Moon, Sun, Lightbulb, Eye, User, Smartphone } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTheme as useNextTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -88,12 +88,27 @@ export function ThemeToggle() {
         </div>
         
         <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-          <h5 className="font-medium text-sm mb-2">💡 Theme Benefits</h5>
+          <h5 className="font-medium text-sm mb-2 flex items-center gap-2">
+            <Lightbulb className="h-4 w-4" />
+            Theme Benefits
+          </h5>
           <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• Reduces eye strain during learning</li>
-            <li>• Improves focus and concentration</li>
-            <li>• Personalizes your experience</li>
-            <li>• Syncs across all devices</li>
+            <li className="flex items-center gap-2">
+              <Eye className="h-3 w-3" />
+              Reduces eye strain during learning
+            </li>
+            <li className="flex items-center gap-2">
+              <User className="h-3 w-3" />
+              Improves focus and concentration
+            </li>
+            <li className="flex items-center gap-2">
+              <Palette className="h-3 w-3" />
+              Personalizes your experience
+            </li>
+            <li className="flex items-center gap-2">
+              <Smartphone className="h-3 w-3" />
+              Syncs across all devices
+            </li>
           </ul>
         </div>
         </SheetContent>

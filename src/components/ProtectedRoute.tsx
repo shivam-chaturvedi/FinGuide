@@ -11,7 +11,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requireAuth = true }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const location = useLocation();
 
   // Show loading spinner while checking authentication
@@ -66,9 +66,14 @@ export function ProtectedRoute({ children, requireAuth = true }: ProtectedRouteP
     );
   }
 
-  // If user is logged in but trying to access auth pages, redirect to dashboard
+  // If user is logged in but trying to access auth pages, redirect to appropriate dashboard
   if (!requireAuth && user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={isAdmin ? "/admin" : "/dashboard"} replace />;
+  }
+
+  // If admin user tries to access regular dashboard, redirect to admin dashboard
+  if (requireAuth && user && isAdmin && location.pathname === '/dashboard') {
+    return <Navigate to="/admin" replace />;
   }
 
   return <>{children}</>;

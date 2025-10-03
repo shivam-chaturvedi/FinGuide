@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { LanguageToggle } from "@/components/LanguageToggle";
+import { Logo } from "@/components/Logo";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +15,7 @@ import FeaturesSection from "@/components/sections/FeaturesSection";
 import ImpactSection from "@/components/sections/ImpactSection";
 import CTASection from "@/components/sections/CTASection";
 import Footer from "@/components/sections/Footer";
+import GoogleTranslate from "@/components/GoogleTranslate";
 
 const Index = () => {
   const { t } = useLanguage();
@@ -54,17 +55,15 @@ const Index = () => {
     }
   }, [user]);
 
-  
+
   return (
     <div className={`min-h-screen bg-background text-foreground flex flex-col ${isDark ? 'dark' : ''} theme-${theme}`}>
       {/* Header */}
       <header className="bg-card border-b border-border p-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
-        <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-          {t('app.name')}
-        </h1>
+        <Logo size="md" showText={true} />
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <LanguageToggle />
+          <GoogleTranslate />
           {user ? (
             <div className="flex items-center gap-2 ml-2">
               <Button asChild variant="ghost" size="sm">
@@ -76,7 +75,7 @@ const Index = () => {
             </div>
           ) : (
             <div className="flex items-center gap-2 ml-2">
-              <Button asChild size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+              <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-white">
                 <Link to="/login">{t('nav.login')}</Link>
               </Button>
               <Button asChild size="sm">

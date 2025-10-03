@@ -350,15 +350,15 @@ const modules: Module[] = [
 ];
 
 const categoryColors = {
-  basics: "bg-blue-500/10 text-blue-600 border-blue-200",
-  management: "bg-green-500/10 text-green-600 border-green-200",
-  remittance: "bg-purple-500/10 text-purple-600 border-purple-200",
-  advanced: "bg-orange-500/10 text-orange-600 border-orange-200"
+  basics: "bg-primary/10 text-primary border-primary/20",
+  management: "bg-secondary/10 text-secondary border-secondary/20",
+  remittance: "bg-golden-yellow/10 text-golden-yellow border-golden-yellow/20",
+  advanced: "bg-creative-purple/10 text-creative-purple border-creative-purple/20"
 };
 
 const statusIcons = {
   completed: <CheckCircle className="h-5 w-5 text-green-600" />,
-  "in-progress": <Play className="h-5 w-5 text-blue-600" />,
+  "in-progress": <Play className="h-5 w-5 text-primary" />,
   locked: <Lock className="h-5 w-5 text-gray-400" />,
   "not-started": <Play className="h-5 w-5 text-gray-600" />
 };
@@ -382,8 +382,8 @@ export default function Modules() {
     { id: "advanced", label: "Advanced", icon: Trophy },
   ];
 
-  const filteredModules = selectedCategory === "all"
-    ? modules
+  const filteredModules = selectedCategory === "all" 
+    ? modules 
     : modules.filter(module => module.category === selectedCategory);
 
   const handleStartModule = (module: Module) => {
@@ -835,16 +835,16 @@ export default function Modules() {
                   <div className="text-2xl font-bold text-primary mb-2">{module.thumbnail}</div>
                   <div className="text-sm text-muted-foreground">Course Content</div>
                 </div>
-              </div>
+                  </div>
               <div className="absolute top-3 right-3">
-                <Badge className={categoryColors[module.category]}>
-                  {module.category}
-                </Badge>
+                    <Badge className={categoryColors[module.category]}>
+                      {module.category}
+                    </Badge>
               </div>
               <div className="absolute top-3 left-3">
                 {statusIcons[module.status]}
-              </div>
-            </div>
+                    </div>
+                  </div>
 
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between mb-2">
@@ -875,7 +875,7 @@ export default function Modules() {
                 </div>
               </div>
             </CardHeader>
-
+            
             <CardContent className="pt-0">
               {/* Progress Bar */}
               {module.progress > 0 && (
@@ -887,7 +887,7 @@ export default function Modules() {
                   <Progress value={module.progress} className="h-2" />
                 </div>
               )}
-
+              
               {/* Quiz Score */}
               {module.quizScore && (
                 <div className="flex items-center gap-2 mb-4">
@@ -918,7 +918,7 @@ export default function Modules() {
               </div>
 
               <div className="space-y-2">
-                <Button
+                <Button 
                   className="w-full"
                   disabled={module.status === "locked"}
                   variant={module.status === "completed" ? "secondary" : "default"}
@@ -949,7 +949,7 @@ export default function Modules() {
                 >
                   <HelpCircle className="h-4 w-4 mr-2" />
                   {module.status === "locked" ? "Buy Premium Access" : "Take Quiz"}
-                </Button>
+                  </Button>
               </div>
             </CardContent>
           </Card>
