@@ -23,6 +23,27 @@ import {
   DollarSign
 } from 'lucide-react';
 
+interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
+}
+
+interface QuizData {
+  id: string;
+  name: string;
+  description: string;
+  questions: QuizQuestion[];
+  passing_score: number;
+  time_limit_minutes?: number;
+  is_published: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 interface ModuleData {
   id: string;
   title: string;
@@ -81,9 +102,15 @@ export default function ModuleDetail() {
   
   const [moduleData, setModuleData] = useState<ModuleData | null>(null);
   const [lessons, setLessons] = useState<LessonData[]>([]);
+  const [quizData, setQuizData] = useState<QuizData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<LessonData | null>(null);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
+  const [quizScore, setQuizScore] = useState<number | null>(null);
+  const [quizCompleted, setQuizCompleted] = useState(false);
+  const [showQuizResults, setShowQuizResults] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -133,6 +160,28 @@ export default function ModuleDetail() {
         }
       }
 
+      // Fetch quiz data if module has a quiz
+      if (module.quiz_id) {
+        const { data: quiz, error: quizError } = await supabase
+          .from('quizzes')
+          .select('*')
+          .eq('id', module.quiz_id)
+          .eq('is_published', true)
+          .single();
+
+        if (quizError) {
+          console.error('Error fetching quiz:', quizError);
+        } else {
+          console.log('Quiz data:', quiz);
+          // Transform the quiz data to match our interface
+          const transformedQuiz: QuizData = {
+            ...quiz,
+            questions: quiz.questions as any as QuizQuestion[]
+          };
+          setQuizData(transformedQuiz);
+        }
+      }
+
     } catch (error) {
       console.error('Error loading module:', error);
       setError('Failed to load module');
@@ -178,6 +227,100 @@ export default function ModuleDetail() {
         variant: "destructive"
       });
     }
+  };
+
+  const handleStartQuiz = () => {
+    if (!quizData) return;
+    setShowQuiz(true);
+    setQuizAnswers({});
+    setQuizScore(null);
+    setQuizCompleted(false);
+    setShowQuizResults(false);
+  };
+
+  const handleQuizAnswer = (questionId: string, answerIndex: number) => {
+    setQuizAnswers(prev => ({
+      ...prev,
+      [questionId]: answerIndex
+    }));
+  };
+
+  const handleSubmitQuiz = async () => {
+    if (!quizData || !user || !moduleData) return;
+
+    // Calculate score
+    let correctAnswers = 0;
+    const totalQuestions = quizData.questions.length;
+
+    quizData.questions.forEach(question => {
+      if (quizAnswers[question.id] === question.correctAnswer) {
+        correctAnswers++;
+      }
+    });
+
+    const score = Math.round((correctAnswers / totalQuestions) * 100);
+    const passed = score >= quizData.passing_score;
+
+    setQuizScore(score);
+    setQuizCompleted(true);
+    setShowQuizResults(true);
+
+    try {
+      // Record quiz attempt
+      const { error: attemptError } = await supabase
+        .from('quiz_attempts')
+        .insert({
+          user_id: user.id,
+          quiz_id: quizData.id,
+          module_id: moduleData.id,
+          answers: quizAnswers,
+          score: score,
+          passed: passed,
+          completed_at: new Date().toISOString()
+        });
+
+      if (attemptError) {
+        console.error('Error recording quiz attempt:', attemptError);
+      }
+
+      // Update module progress with quiz score
+      const { error: progressError } = await supabase
+        .from('user_module_progress')
+        .upsert({
+          user_id: user.id,
+          module_id: moduleData.id,
+          quiz_score: score,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,module_id'
+        });
+
+      if (progressError) {
+        console.error('Error updating module progress:', progressError);
+      }
+
+      toast({
+        title: passed ? "Quiz Passed!" : "Quiz Failed",
+        description: `You scored ${score}%. ${passed ? 'Congratulations!' : 'Try again to improve your score.'}`,
+        variant: passed ? "default" : "destructive"
+      });
+
+    } catch (error) {
+      console.error('Error submitting quiz:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit quiz results",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRetakeQuiz = () => {
+    setShowQuiz(true);
+    setQuizAnswers({});
+    setQuizScore(null);
+    setQuizCompleted(false);
+    setShowQuizResults(false);
   };
 
   const getCategoryIcon = (category: string) => {
@@ -624,6 +767,152 @@ export default function ModuleDetail() {
                     </div>
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Quiz Section */}
+          {quizData && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="h-5 w-5 text-purple-500" />
+                  <h3 className="font-semibold">Quiz: {quizData.name}</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">{quizData.description}</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Questions: {quizData.questions.length}</span>
+                  <span>Passing Score: {quizData.passing_score}%</span>
+                  {quizData.time_limit_minutes && (
+                    <span>Time Limit: {quizData.time_limit_minutes} min</span>
+                  )}
+                </div>
+                
+                {!showQuiz ? (
+                  <Button 
+                    onClick={handleStartQuiz} 
+                    className="w-full"
+                    disabled={!user}
+                  >
+                    <HelpCircle className="h-4 w-4 mr-2" />
+                    {user ? 'Start Quiz' : 'Login to Start Quiz'}
+                  </Button>
+                ) : (
+                  <div className="space-y-4">
+                    {!showQuizResults ? (
+                      <div className="space-y-4">
+                        {quizData.questions.map((question, index) => (
+                          <div key={question.id} className="border rounded-lg p-4">
+                            <h4 className="font-medium mb-3">
+                              {index + 1}. {question.question}
+                            </h4>
+                            <div className="space-y-2">
+                              {question.options.map((option, optionIndex) => (
+                                <label
+                                  key={optionIndex}
+                                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                >
+                                  <input
+                                    type="radio"
+                                    name={question.id}
+                                    value={optionIndex}
+                                    checked={quizAnswers[question.id] === optionIndex}
+                                    onChange={() => handleQuizAnswer(question.id, optionIndex)}
+                                    className="h-4 w-4 text-primary"
+                                  />
+                                  <span className="text-sm">{option}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                        
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={handleSubmitQuiz}
+                            className="flex-1"
+                            disabled={Object.keys(quizAnswers).length !== quizData.questions.length}
+                          >
+                            Submit Quiz
+                          </Button>
+                          <Button 
+                            variant="outline"
+                            onClick={() => setShowQuiz(false)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="text-center p-6 bg-gray-50 rounded-lg">
+                          <div className="text-3xl font-bold text-primary mb-2">
+                            {quizScore}%
+                          </div>
+                          <div className="text-lg font-medium mb-2">
+                            {quizScore && quizScore >= quizData.passing_score ? 'Quiz Passed!' : 'Quiz Failed'}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {quizScore && quizScore >= quizData.passing_score 
+                              ? 'Congratulations! You have successfully completed the quiz.'
+                              : `You need ${quizData.passing_score}% to pass. Try again to improve your score.`
+                            }
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <h4 className="font-medium">Review Answers:</h4>
+                          {quizData.questions.map((question, index) => {
+                            const userAnswer = quizAnswers[question.id];
+                            const isCorrect = userAnswer === question.correctAnswer;
+                            return (
+                              <div key={question.id} className="border rounded-lg p-3">
+                                <div className="flex items-start justify-between mb-2">
+                                  <h5 className="font-medium text-sm">
+                                    {index + 1}. {question.question}
+                                  </h5>
+                                  <div className={`px-2 py-1 rounded text-xs ${
+                                    isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    {isCorrect ? 'Correct' : 'Incorrect'}
+                                  </div>
+                                </div>
+                                <div className="space-y-1 text-sm">
+                                  <div className="text-muted-foreground">
+                                    Your answer: {userAnswer !== undefined ? question.options[userAnswer] : 'Not answered'}
+                                  </div>
+                                  <div className="text-muted-foreground">
+                                    Correct answer: {question.options[question.correctAnswer]}
+                                  </div>
+                                  <div className="text-muted-foreground italic">
+                                    {question.explanation}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={handleRetakeQuiz}
+                            className="flex-1"
+                          >
+                            Retake Quiz
+                          </Button>
+                          <Button 
+                            variant="outline"
+                            onClick={() => setShowQuiz(false)}
+                          >
+                            Close
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
