@@ -116,9 +116,6 @@ export default function ModulesDynamic() {
 
   const loadModules = async () => {
     try {
-      console.log('=== LOADING MODULES FROM SUPABASE ===');
-      console.log('User:', user);
-      console.log('Auth loading:', authLoading);
 
       // Fetch modules from Supabase
       const { data: modulesData, error: modulesError } = await supabase
@@ -131,8 +128,6 @@ export default function ModulesDynamic() {
 
       
 
-      console.log('Supabase modules data:', modulesData);
-      console.log('Supabase modules error:', modulesError);
 
       if (modulesError) {
         console.error('Error fetching modules:', modulesError);
@@ -164,82 +159,9 @@ export default function ModulesDynamic() {
         lessons: [] // Empty lessons array since we're not fetching them here
       }));
 
-      console.log('Transformed modules:', transformedModules);
-      console.log('Number of modules:', transformedModules.length);
 
-      // If no modules found, create some sample data for testing
-      if (transformedModules.length === 0) {
-        console.log('No modules found in database, creating sample data...');
-        const sampleModules: Module[] = [
-          {
-            id: 'sample-1',
-            title: 'Financial Basics',
-            description: 'Learn the fundamentals of personal finance and money management.',
-            rating: 4.5,
-            duration: '2 weeks',
-            level: 'Beginner',
-            category: 'basics',
-            progress: 0,
-            status: 'not-started',
-            price: 'Free',
-            thumbnail: 'FB',
-            whatYoullLearn: ['Budgeting', 'Saving', 'Basic investing'],
-            prerequisites: [],
-            quizScore: undefined,
-            quiz_id: undefined,
-            file_url: undefined,
-            file_name: undefined,
-            file_size: undefined,
-            file_type: undefined,
-            video_url: undefined,
-            lessons: [
-              {
-                id: 'lesson-1',
-                title: 'Introduction to Personal Finance',
-                type: 'text',
-                duration: '10 min',
-                content: {
-                  textContent: 'Welcome to the world of personal finance! In this lesson, you will learn the basic concepts that will help you manage your money effectively.',
-                  videoUrl: undefined,
-                  file_url: undefined,
-                  file_name: undefined,
-                  file_size: undefined,
-                  file_type: undefined,
-                  quizQuestions: undefined
-                },
-                isCompleted: false,
-                isLocked: false
-              }
-            ]
-          },
-          {
-            id: 'sample-2',
-            title: 'Savings Strategies',
-            description: 'Discover effective strategies to build your savings and achieve financial goals.',
-            rating: 4.2,
-            duration: '3 weeks',
-            level: 'Intermediate',
-            category: 'management',
-            progress: 0,
-            status: 'not-started',
-            price: 'Free',
-            thumbnail: 'SS',
-            whatYoullLearn: ['Emergency funds', 'Goal setting', 'Investment basics'],
-            prerequisites: ['Financial Basics'],
-            quizScore: undefined,
-            quiz_id: undefined,
-            file_url: undefined,
-            file_name: undefined,
-            file_size: undefined,
-            file_type: undefined,
-            video_url: undefined,
-            lessons: []
-          }
-        ];
-        setModules(sampleModules);
-      } else {
-        setModules(transformedModules as Module[]);
-      }
+      // Set modules from database (empty array if no modules found)
+      setModules(transformedModules as Module[]);
 
     } catch (error) {
       console.error('Error loading modules:', error);
@@ -249,7 +171,6 @@ export default function ModulesDynamic() {
         variant: "destructive"
       });
     } finally {
-      console.log('Setting loading to false');
       setLoading(false);
     }
   };
@@ -886,8 +807,6 @@ export default function ModulesDynamic() {
 
   const handleStartModule = (module: Module) => {
     if (module.status === "locked" || !user) return;
-    console.log(module)
-
     // Navigate to module detail page
     navigate(`/dashboard/modules/${module.id}`);
   };
