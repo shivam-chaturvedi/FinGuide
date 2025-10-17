@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { 
   Send, 
   Shield, 
@@ -25,7 +26,8 @@ import {
   Zap,
   Users,
   Award,
-  BookOpen
+  BookOpen,
+  AlertCircle
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -110,7 +112,8 @@ const remittanceProviders = [
   }
 ];
 
-const countryData = [
+// Country configurations (rates will be fetched live)
+const countryConfigs = [
   { 
     code: "IN", 
     name: "India", 
@@ -118,7 +121,6 @@ const countryData = [
     currency: "INR", 
     tips: "Use UPI for instant transfers",
     popularMethods: ["Bank Transfer", "UPI", "Cash Pickup"],
-    exchangeRate: 83.50,
     regulations: "RBI regulated, 2FA required"
   },
   { 
@@ -128,7 +130,6 @@ const countryData = [
     currency: "PHP", 
     tips: "GCash and bank transfers available",
     popularMethods: ["GCash", "Bank Transfer", "Cash Pickup"],
-    exchangeRate: 56.20,
     regulations: "BSP regulated, ID verification required"
   },
   { 
@@ -138,7 +139,6 @@ const countryData = [
     currency: "CNY", 
     tips: "Alipay integration for convenience",
     popularMethods: ["Alipay", "WeChat Pay", "Bank Transfer"],
-    exchangeRate: 7.25,
     regulations: "SAFE regulated, strict documentation"
   },
   { 
@@ -148,7 +148,6 @@ const countryData = [
     currency: "BDT", 
     tips: "Mobile banking widely accepted",
     popularMethods: ["bKash", "Rocket", "Bank Transfer"],
-    exchangeRate: 110.50,
     regulations: "Bangladesh Bank regulated"
   },
   { 
@@ -158,7 +157,6 @@ const countryData = [
     currency: "MMK", 
     tips: "Mobile money services available",
     popularMethods: ["Wave Money", "KBZ Pay", "Cash Pickup"],
-    exchangeRate: 2100.00,
     regulations: "CBM regulated, limited digital options"
   },
   { 
@@ -168,8 +166,34 @@ const countryData = [
     currency: "THB", 
     tips: "PromptPay integration available",
     popularMethods: ["PromptPay", "Bank Transfer", "Cash Pickup"],
-    exchangeRate: 36.80,
     regulations: "BOT regulated, mobile banking popular"
+  },
+  { 
+    code: "VN", 
+    name: "Vietnam", 
+    flag: "🇻🇳", 
+    currency: "VND", 
+    tips: "Mobile banking and e-wallets popular",
+    popularMethods: ["MoMo", "ZaloPay", "Bank Transfer"],
+    regulations: "SBV regulated, mobile payments common"
+  },
+  { 
+    code: "MY", 
+    name: "Malaysia", 
+    flag: "🇲🇾", 
+    currency: "MYR", 
+    tips: "FPX and mobile banking available",
+    popularMethods: ["FPX", "Bank Transfer", "Cash Pickup"],
+    regulations: "BNM regulated, digital banking popular"
+  },
+  { 
+    code: "PK", 
+    name: "Pakistan", 
+    flag: "🇵🇰", 
+    currency: "PKR", 
+    tips: "Mobile banking and e-wallets available",
+    popularMethods: ["JazzCash", "EasyPaisa", "Bank Transfer"],
+    regulations: "SBP regulated, mobile money common"
   }
 ];
 
@@ -209,11 +233,18 @@ const safetyTips = [
 export default function Remittances() {
   const { t } = useLanguage();
   const { user, profile } = useAuth();
+  const { rates, loading: ratesLoading, error: ratesError, getRateForCurrency } = useExchangeRates();
   const [selectedCountry, setSelectedCountry] = useState("IN");
   const [amount, setAmount] = useState("");
   const [selectedProvider, setSelectedProvider] = useState("");
   const [showCalculator, setShowCalculator] = useState(false);
   const [comparisonMode, setComparisonMode] = useState(false);
+
+  // Create country data with live rates
+  const countryData = countryConfigs.map(config => ({
+    ...config,
+    exchangeRate: getRateForCurrency(config.currency)
+  }));
 
   const currentCountry = countryData.find(c => c.code === selectedCountry);
   const currentAmount = parseFloat(amount) || 0;
@@ -255,6 +286,22 @@ export default function Remittances() {
         <p className="text-muted-foreground text-lg">
           {t('remittances.subtitle', 'Send money home securely and affordably')}
         </p>
+        
+        {/* Exchange Rate Status */}
+        <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Globe className="h-4 w-4" />
+          <span>Exchange Rates (Updated Jan 2025)</span>
+        </div>
+
+        {/* Exchange Rate Error Alert */}
+        {ratesError && (
+          <Alert className="mt-4 max-w-md mx-auto">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {ratesError}. Using cached rates.
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
 
       {/* Quick Actions */}

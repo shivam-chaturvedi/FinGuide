@@ -58,12 +58,14 @@ const Index = () => {
 
   return (
     <div className={`min-h-screen bg-background text-foreground flex flex-col ${isDark ? 'dark' : ''} theme-${theme}`}>
+      {/* Google Translate Widget */}
+      <GoogleTranslate />
+      
       {/* Header */}
       <header className="bg-card border-b border-border p-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
         <Logo size="md" showText={true} />
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <GoogleTranslate />
+                <div className="flex items-center gap-2">
+                  <ThemeToggle />
           {user ? (
             <div className="flex items-center gap-2 ml-2">
               <Button asChild variant="ghost" size="sm">

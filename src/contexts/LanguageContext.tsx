@@ -1,92 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-type Language = 'en' | 'zh';
+type Language = 'en';
 
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: string, fallbackText?: string) => string;
   isTranslating: boolean;
+  setIsTranslating: (translating: boolean) => void;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
-
-// Simple free translation using multiple free services
-const translateText = async (text: string, targetLang: string): Promise<string> => {
-  if (targetLang === 'en') return text;
-  
-  // Simple fallback translations for common terms
-  const fallbackTranslations: Record<string, Record<string, string>> = {
-    'FinGuide SG': { 'zh': '金融指南新加坡' },
-    'Dashboard': { 'zh': '仪表板' },
-    'Modules': { 'zh': '课程' },
-    'Tools': { 'zh': '工具' },
-    'Remit': { 'zh': '汇款' },
-    'Profile': { 'zh': '个人' },
-    'Sign In': { 'zh': '登录' },
-    'Join Free': { 'zh': '免费加入' },
-    'Sign Out': { 'zh': '登出' },
-    'Welcome to FinGuide SG': { 'zh': '欢迎来到金融指南新加坡' },
-    'Start Your Financial Journey': { 'zh': '开始您的财务之旅' },
-    'Quick Actions': { 'zh': '快速操作' },
-    'Financial Modules': { 'zh': '金融模块' },
-    'Learn budgeting, savings, and investing basics': { 'zh': '学习预算、储蓄和投资基础知识' },
-    'Financial Calculators': { 'zh': '金融计算器' },
-    'Budget planner and savings calculator': { 'zh': '预算规划师和储蓄计算器' },
-    'Safe Remittances': { 'zh': '安全汇款' },
-    'Send money home safely and affordably': { 'zh': '安全实惠地汇款回家' },
-  };
-
-  // Check fallback translations first
-  if (fallbackTranslations[text] && fallbackTranslations[text][targetLang]) {
-    return fallbackTranslations[text][targetLang];
-  }
-  
-  try {
-    // Try LibreTranslate first (free service)
-    const response = await fetch('https://libretranslate.de/translate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        q: text,
-        source: 'en',
-        target: targetLang === 'zh' ? 'zh' : 'en',
-        format: 'text'
-      })
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      return data.translatedText || text;
-    }
-  } catch (error) {
-    console.warn('LibreTranslate failed, trying alternative:', error);
-  }
-
-  // Try alternative free service
-  try {
-    const response = await fetch('https://api.mymemory.translated.net/get', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      const translatedText = data.responseData?.translatedText;
-      if (translatedText && translatedText !== text) {
-        return translatedText;
-      }
-    }
-  } catch (error) {
-    console.warn('Alternative translation failed:', error);
-  }
-  
-  return text;
-};
 
 // English fallback texts (source language)
 const englishTexts = {
@@ -267,22 +191,11 @@ const englishTexts = {
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguage] = useState<Language>('en');
   const [isTranslating, setIsTranslating] = useState(false);
-  const [translations, setTranslations] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const savedLanguage = localStorage.getItem('finguide-language') as Language;
-    if (savedLanguage && (savedLanguage === 'en' || savedLanguage === 'zh')) {
+    if (savedLanguage && savedLanguage === 'en') {
       setLanguage(savedLanguage);
-    }
-    
-    // Load cached translations
-    const cachedTranslations = localStorage.getItem('finguide-translations');
-    if (cachedTranslations) {
-      try {
-        setTranslations(JSON.parse(cachedTranslations));
-      } catch (error) {
-        console.warn('Failed to load cached translations:', error);
-      }
     }
   }, []);
 
@@ -290,43 +203,13 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('finguide-language', language);
   }, [language]);
 
-  // Sync translation function that returns immediately
+  // Simple translation function - just returns English text
   const t = (key: string, fallbackText?: string): string => {
-    // If English, return the English text directly
-    if (language === 'en') {
-      return englishTexts[key as keyof typeof englishTexts] || fallbackText || key;
-    }
-
-    // Check if we have a cached translation
-    const cacheKey = `${key}_${language}`;
-    if (translations[cacheKey]) {
-      return translations[cacheKey];
-    }
-
-    // Return English text immediately and translate in background
-    const englishText = englishTexts[key as keyof typeof englishTexts] || fallbackText || key;
-    
-    // Translate in background (only if not already translating)
-    if (!isTranslating) {
-      setIsTranslating(true);
-      translateText(englishText, language).then(translatedText => {
-        if (translatedText !== englishText) {
-          const newTranslations = { ...translations, [cacheKey]: translatedText };
-          setTranslations(newTranslations);
-          localStorage.setItem('finguide-translations', JSON.stringify(newTranslations));
-        }
-        setIsTranslating(false);
-      }).catch(error => {
-        console.warn('Background translation failed:', error);
-        setIsTranslating(false);
-      });
-    }
-
-    return englishText;
+    return englishTexts[key as keyof typeof englishTexts] || fallbackText || key;
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, isTranslating }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, isTranslating, setIsTranslating }}>
       {children}
     </LanguageContext.Provider>
   );

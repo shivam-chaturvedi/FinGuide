@@ -23,15 +23,17 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Google Translate Widget */}
+      <GoogleTranslate />
+      
       {/* Enhanced Responsive Header */}
       <header className="bg-card border-b border-border p-3 sm:p-4 flex justify-between items-center shadow-sm">
         {/* Logo */}
         <Logo size="sm" showText={true} className="truncate" />
         
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-2">
-          <ThemeToggle />
-          <GoogleTranslate />
+                {/* Desktop Navigation */}
+                <div className="hidden md:flex items-center gap-2">
+                  <ThemeToggle />
           {user ? (
             <div className="flex items-center gap-2 ml-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -66,10 +68,9 @@ export function Layout() {
           )}
         </div>
 
-        {/* Mobile Menu */}
-        <div className="md:hidden flex items-center gap-2">
-          <ThemeToggle />
-          <GoogleTranslate />
+                {/* Mobile Menu */}
+                <div className="md:hidden flex items-center gap-2">
+                  <ThemeToggle />
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="sm">

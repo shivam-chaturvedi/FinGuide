@@ -1,22 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, PiggyBank, Send, TrendingUp, Globe } from "lucide-react";
+import { Calculator, PiggyBank, Send, TrendingUp, Globe, AlertCircle } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from "recharts";
+import { useExchangeRates } from "@/hooks/useExchangeRates";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-const countries = [
-  { code: "IN", name: "India", currency: "INR", rate: 61.5, flag: "🇮🇳", symbol: "₹" },
-  { code: "PH", name: "Philippines", currency: "PHP", rate: 42.3, flag: "🇵🇭", symbol: "₱" },
-  { code: "CN", name: "China", currency: "CNY", rate: 5.4, flag: "🇨🇳", symbol: "¥" },
-  { code: "ID", name: "Indonesia", currency: "IDR", rate: 11250, flag: "🇮🇩", symbol: "Rp" },
-  { code: "BD", name: "Bangladesh", currency: "BDT", rate: 82.5, flag: "🇧🇩", symbol: "৳" },
+// Country configurations (rates will be fetched live)
+const countryConfigs = [
+  { code: "IN", name: "India", currency: "INR", flag: "🇮🇳", symbol: "₹" },
+  { code: "PH", name: "Philippines", currency: "PHP", flag: "🇵🇭", symbol: "₱" },
+  { code: "CN", name: "China", currency: "CNY", flag: "🇨🇳", symbol: "¥" },
+  { code: "ID", name: "Indonesia", currency: "IDR", flag: "🇮🇩", symbol: "Rp" },
+  { code: "BD", name: "Bangladesh", currency: "BDT", flag: "🇧🇩", symbol: "৳" },
+  { code: "MM", name: "Myanmar", currency: "MMK", flag: "🇲🇲", symbol: "K" },
+  { code: "TH", name: "Thailand", currency: "THB", flag: "🇹🇭", symbol: "฿" },
+  { code: "VN", name: "Vietnam", currency: "VND", flag: "🇻🇳", symbol: "₫" },
+  { code: "MY", name: "Malaysia", currency: "MYR", flag: "🇲🇾", symbol: "RM" },
+  { code: "PK", name: "Pakistan", currency: "PKR", flag: "🇵🇰", symbol: "₨" },
 ];
 
 export default function Calculators() {
+  // Exchange rates hook
+  const { rates, loading: ratesLoading, error: ratesError, getRateForCurrency } = useExchangeRates();
   // Budget Calculator State
   const [budgetIncome, setBudgetIncome] = useState("");
   const [housing, setHousing] = useState("");
@@ -32,9 +42,28 @@ export default function Calculators() {
   
   // Remittance Calculator State
   const [remittanceAmount, setRemittanceAmount] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState(countries[0]);
+  const [selectedCountry, setSelectedCountry] = useState(countryConfigs[0]);
   const [customRate, setCustomRate] = useState("");
   const [transferFee, setTransferFee] = useState("15");
+
+  // Create countries array with live rates
+  const countries = countryConfigs.map(config => {
+    const rate = getRateForCurrency(config.currency);
+    return {
+      ...config,
+      rate
+    };
+  });
+
+  // Update selected country when rates change
+  useEffect(() => {
+    if (rates.length > 0) {
+      const updatedCountry = countries.find(c => c.code === selectedCountry.code);
+      if (updatedCountry) {
+        setSelectedCountry(updatedCountry);
+      }
+    }
+  }, [rates, selectedCountry.code]);
 
   const calculateBudget = () => {
     const income = parseFloat(budgetIncome);
@@ -108,7 +137,7 @@ export default function Calculators() {
   const calculateRemittance = () => {
     const sgd = parseFloat(remittanceAmount);
     const fee = parseFloat(transferFee);
-    const rate = customRate ? parseFloat(customRate) : selectedCountry.rate;
+    const rate = customRate ? parseFloat(customRate) : getRateForCurrency(selectedCountry.currency);
     
     if (!sgd) return null;
     
@@ -142,6 +171,22 @@ export default function Calculators() {
       <div className="text-center py-4">
         <h1 className="text-2xl font-bold text-foreground mb-2">Financial Calculators</h1>
         <p className="text-muted-foreground">Plan your finances with smart tools</p>
+        
+        {/* Exchange Rate Status */}
+        <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Globe className="h-4 w-4" />
+          <span>Exchange Rates (Updated Jan 2025)</span>
+        </div>
+
+        {/* Exchange Rate Error Alert */}
+        {ratesError && (
+          <Alert className="mt-4 max-w-md mx-auto">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {ratesError}. Using cached rates.
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
 
       {/* Calculator Tabs */}
@@ -213,7 +258,7 @@ export default function Calculators() {
                   <Input
                     id="exchange-rate"
                     type="number"
-                    placeholder={`Default: ${selectedCountry.rate}`}
+                    placeholder={`Default: ${getRateForCurrency(selectedCountry.currency)}`}
                     value={customRate}
                     onChange={(e) => setCustomRate(e.target.value)}
                   />
