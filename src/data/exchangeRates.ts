@@ -98,3 +98,4 @@ export function getAllExchangeRates(): ExchangeRate[] {
 export function getSupportedCurrencies(): string[] {
   return hardcodedExchangeRates.map(rate => rate.code);
 }
+

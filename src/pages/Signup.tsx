@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { User, Mail, Lock, Eye, EyeOff, Globe, ArrowLeft, Shield, Check, Flag, MapPin, Briefcase, DollarSign, Target, Languages } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { User, Mail, Lock, Eye, EyeOff, Globe, ArrowLeft, Shield, Check, Flag, MapPin, Briefcase, DollarSign, Target, Languages, Phone, AlertCircle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,6 +24,78 @@ const countries = APP_CONFIG.supportedCountries.map((country, index) => {
 });
 
 const benefits = APP_CONFIG.features;
+
+// Validation functions
+const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const validatePhone = (phone: string): boolean => {
+  // Remove all non-digit characters
+  const cleanPhone = phone.replace(/\D/g, '');
+  // Check if it's a valid phone number (8-15 digits)
+  return cleanPhone.length >= 8 && cleanPhone.length <= 15;
+};
+
+const validatePassword = (password: string): { isValid: boolean; strength: string; requirements: string[] } => {
+  const requirements = [];
+  let score = 0;
+
+  if (password.length >= 8) {
+    score += 1;
+    requirements.push("At least 8 characters");
+  } else {
+    requirements.push("At least 8 characters");
+  }
+
+  if (/[a-z]/.test(password)) {
+    score += 1;
+    requirements.push("Lowercase letter");
+  } else {
+    requirements.push("Lowercase letter");
+  }
+
+  if (/[A-Z]/.test(password)) {
+    score += 1;
+    requirements.push("Uppercase letter");
+  } else {
+    requirements.push("Uppercase letter");
+  }
+
+  if (/\d/.test(password)) {
+    score += 1;
+    requirements.push("Number");
+  } else {
+    requirements.push("Number");
+  }
+
+  if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    score += 1;
+    requirements.push("Special character");
+  } else {
+    requirements.push("Special character");
+  }
+
+  let strength = "Weak";
+  if (score >= 4) strength = "Strong";
+  else if (score >= 3) strength = "Medium";
+
+  return {
+    isValid: score >= 4,
+    strength,
+    requirements
+  };
+};
+
+const validateName = (name: string): boolean => {
+  return name.trim().length >= 2 && /^[a-zA-Z\s'-]+$/.test(name.trim());
+};
+
+const validateIncome = (income: string): boolean => {
+  const numIncome = parseInt(income);
+  return !isNaN(numIncome) && numIncome >= 500 && numIncome <= 50000;
+};
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -41,6 +114,9 @@ export default function Signup() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+  const [passwordValidation, setPasswordValidation] = useState({ isValid: false, strength: "Weak", requirements: [] });
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -48,79 +124,93 @@ export default function Signup() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear validation error for this field
+    if (validationErrors[field]) {
+      setValidationErrors(prev => ({ ...prev, [field]: "" }));
+    }
+    
+    // Real-time validation for specific fields
+    if (field === "password") {
+      const validation = validatePassword(value);
+      setPasswordValidation(validation);
+    }
+  };
+
+  const validateField = (field: string, value: string): string => {
+    switch (field) {
+      case "fullName":
+        if (!value.trim()) return "Full name is required";
+        if (!validateName(value)) return "Please enter a valid name (letters, spaces, hyphens, and apostrophes only)";
+        return "";
+      
+      case "email":
+        if (!value.trim()) return "Email address is required";
+        if (!validateEmail(value)) return "Please enter a valid email address";
+        return "";
+      
+      case "phone":
+        if (value.trim() && !validatePhone(value)) return "Please enter a valid phone number (8-15 digits)";
+        return "";
+      
+      case "country":
+        if (!value) return "Please select your country";
+        return "";
+      
+      case "occupation":
+        if (!value.trim()) return "Occupation is required";
+        if (value.trim().length < 2) return "Occupation must be at least 2 characters";
+        return "";
+      
+      case "monthlyIncome":
+        if (!value.trim()) return "Monthly income is required";
+        if (!validateIncome(value)) return "Please enter a valid income between $500 and $50,000";
+        return "";
+      
+      case "password":
+        if (!value) return "Password is required";
+        const passwordValidation = validatePassword(value);
+        if (!passwordValidation.isValid) return "Password does not meet requirements";
+        return "";
+      
+      case "confirmPassword":
+        if (!value) return "Please confirm your password";
+        if (value !== formData.password) return "Passwords do not match";
+        return "";
+      
+      default:
+        return "";
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
-    if (!formData.fullName.trim()) {
-      toast({
-        title: "Full Name Required",
-        description: "Please enter your full name.",
-        variant: "destructive"
-      });
-      return;
-    }
+    // Validate all fields
+    const errors: {[key: string]: string} = {};
+    const fieldsToValidate = ['fullName', 'email', 'phone', 'country', 'occupation', 'monthlyIncome', 'password', 'confirmPassword'];
+    
+    fieldsToValidate.forEach(field => {
+      const error = validateField(field, formData[field as keyof typeof formData]);
+      if (error) {
+        errors[field] = error;
+      }
+    });
 
-    if (!formData.email.trim()) {
-      toast({
-        title: "Email Required",
-        description: "Please enter your email address.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.country) {
-      toast({
-        title: "Country Required",
-        description: "Please select your country.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.occupation.trim()) {
-      toast({
-        title: "Occupation Required",
-        description: "Please enter your occupation.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.monthlyIncome || parseInt(formData.monthlyIncome) <= 0) {
-      toast({
-        title: "Monthly Income Required",
-        description: "Please enter a valid monthly income.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Password Mismatch",
-        description: "Please ensure both passwords match.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    // Check terms agreement
     if (!agreeTerms) {
-      toast({
-        title: "Terms Required",
-        description: "Please accept our terms and conditions to continue.",
-        variant: "destructive"
-      });
-      return;
+      errors.terms = "Please accept our terms and conditions to continue";
     }
 
-    if (formData.password.length < 6) {
+    // Set validation errors
+    setValidationErrors(errors);
+
+    // If there are validation errors, show the first one
+    if (Object.keys(errors).length > 0) {
+      const firstError = Object.values(errors)[0];
       toast({
-        title: "Password Too Short",
-        description: "Password must be at least 6 characters long.",
+        title: "Validation Error",
+        description: firstError,
         variant: "destructive"
       });
       return;
@@ -266,10 +356,16 @@ export default function Signup() {
                       placeholder="Enter your full name"
                       value={formData.fullName}
                       onChange={(e) => handleInputChange("fullName", e.target.value)}
-                      className="pl-10 h-12"
+                      className={`pl-10 h-12 ${validationErrors.fullName ? 'border-red-500 focus:border-red-500' : ''}`}
                       required
                     />
                   </div>
+                  {validationErrors.fullName && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {validationErrors.fullName}
+                    </p>
+                  )}
                 </div>
 
                 {/* Email */}
@@ -285,10 +381,16 @@ export default function Signup() {
                       placeholder="john@example.com"
                       value={formData.email}
                       onChange={(e) => handleInputChange("email", e.target.value)}
-                      className="pl-10 h-12"
+                      className={`pl-10 h-12 ${validationErrors.email ? 'border-red-500 focus:border-red-500' : ''}`}
                       required
                     />
                   </div>
+                  {validationErrors.email && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {validationErrors.email}
+                    </p>
+                  )}
                 </div>
 
                 {/* Phone */}
@@ -297,16 +399,33 @@ export default function Signup() {
                     Phone Number (Optional)
                   </Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="phone"
                       type="tel"
                       placeholder="+65 9123 4567"
                       value={formData.phone}
-                      onChange={(e) => handleInputChange("phone", e.target.value)}
-                      className="pl-10 h-12"
+                      onChange={(e) => {
+                        // Format phone number as user types
+                        let value = e.target.value;
+                        // Remove all non-digit characters except +
+                        value = value.replace(/[^\d+]/g, '');
+                        // Limit to 15 characters
+                        if (value.length > 15) value = value.substring(0, 15);
+                        handleInputChange("phone", value);
+                      }}
+                      className={`pl-10 h-12 ${validationErrors.phone ? 'border-red-500 focus:border-red-500' : ''}`}
                     />
                   </div>
+                  {validationErrors.phone && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {validationErrors.phone}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Enter your phone number with country code (e.g., +65 9123 4567)
+                  </p>
                 </div>
 
                 {/* Country & Language Row */}
@@ -316,7 +435,7 @@ export default function Signup() {
                       Country *
                     </Label>
                     <Select value={formData.country} onValueChange={(value) => handleInputChange("country", value)}>
-                      <SelectTrigger className="h-12">
+                      <SelectTrigger className={`h-12 ${validationErrors.country ? 'border-red-500 focus:border-red-500' : ''}`}>
                         <SelectValue placeholder="Select country" />
                       </SelectTrigger>
                       <SelectContent>
@@ -329,6 +448,12 @@ export default function Signup() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {validationErrors.country && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        {validationErrors.country}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -376,17 +501,23 @@ export default function Signup() {
                       Occupation *
                     </Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="occupation"
                         type="text"
                         placeholder="e.g., Construction Worker"
                         value={formData.occupation}
                         onChange={(e) => handleInputChange("occupation", e.target.value)}
-                        className="pl-10 h-12"
+                        className={`pl-10 h-12 ${validationErrors.occupation ? 'border-red-500 focus:border-red-500' : ''}`}
                         required
                       />
                     </div>
+                    {validationErrors.occupation && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        {validationErrors.occupation}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -394,17 +525,28 @@ export default function Signup() {
                       Monthly Income (SGD) *
                     </Label>
                     <div className="relative">
-                      <span className="absolute left-3 top-3 text-muted-foreground text-sm">$</span>
+                      <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="monthlyIncome"
                         type="number"
                         placeholder="2000"
                         value={formData.monthlyIncome}
                         onChange={(e) => handleInputChange("monthlyIncome", e.target.value)}
-                        className="pl-8 h-12"
+                        className={`pl-10 h-12 ${validationErrors.monthlyIncome ? 'border-red-500 focus:border-red-500' : ''}`}
+                        min="500"
+                        max="50000"
                         required
                       />
                     </div>
+                    {validationErrors.monthlyIncome && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        {validationErrors.monthlyIncome}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Enter amount between $500 - $50,000
+                    </p>
                   </div>
                 </div>
 
@@ -414,7 +556,7 @@ export default function Signup() {
                     Financial Goals (Optional)
                   </Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Target className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="financialGoals"
                       type="text"
@@ -442,7 +584,9 @@ export default function Signup() {
                       placeholder="Create a strong password"
                       value={formData.password}
                       onChange={(e) => handleInputChange("password", e.target.value)}
-                      className="pl-10 pr-10 h-12"
+                      onFocus={() => setShowPasswordRequirements(true)}
+                      onBlur={() => setShowPasswordRequirements(false)}
+                      className={`pl-10 pr-10 h-12 ${validationErrors.password ? 'border-red-500 focus:border-red-500' : ''}`}
                       required
                     />
                     <button
@@ -453,6 +597,64 @@ export default function Signup() {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  
+                  {/* Password Strength Indicator */}
+                  {formData.password && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full transition-all duration-300 ${
+                              passwordValidation.strength === 'Strong' ? 'bg-green-500' :
+                              passwordValidation.strength === 'Medium' ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: passwordValidation.strength === 'Strong' ? '100%' : passwordValidation.strength === 'Medium' ? '66%' : '33%' }}
+                          />
+                        </div>
+                        <span className={`text-xs font-medium ${
+                          passwordValidation.strength === 'Strong' ? 'text-green-600' :
+                          passwordValidation.strength === 'Medium' ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {passwordValidation.strength}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Password Requirements */}
+                  {showPasswordRequirements && formData.password && (
+                    <div className="p-3 bg-gray-50 rounded-lg space-y-1">
+                      <p className="text-xs font-medium text-gray-700">Password Requirements:</p>
+                      {passwordValidation.requirements.map((requirement, index) => {
+                        const isValid = passwordValidation.requirements[index] && 
+                          (requirement.includes('8 characters') ? formData.password.length >= 8 :
+                           requirement.includes('Lowercase') ? /[a-z]/.test(formData.password) :
+                           requirement.includes('Uppercase') ? /[A-Z]/.test(formData.password) :
+                           requirement.includes('Number') ? /\d/.test(formData.password) :
+                           requirement.includes('Special') ? /[!@#$%^&*(),.?":{}|<>]/.test(formData.password) : false);
+                        
+                        return (
+                          <div key={index} className="flex items-center gap-2 text-xs">
+                            {isValid ? (
+                              <CheckCircle className="h-3 w-3 text-green-500" />
+                            ) : (
+                              <AlertCircle className="h-3 w-3 text-gray-400" />
+                            )}
+                            <span className={isValid ? 'text-green-600' : 'text-gray-500'}>
+                              {requirement}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  
+                  {validationErrors.password && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {validationErrors.password}
+                    </p>
+                  )}
                 </div>
 
                 {/* Confirm Password */}
@@ -468,7 +670,7 @@ export default function Signup() {
                       placeholder="Confirm your password"
                       value={formData.confirmPassword}
                       onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                      className="pl-10 pr-10 h-12"
+                      className={`pl-10 pr-10 h-12 ${validationErrors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}`}
                       required
                     />
                     <button
@@ -479,26 +681,51 @@ export default function Signup() {
                       {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  {validationErrors.confirmPassword && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {validationErrors.confirmPassword}
+                    </p>
+                  )}
+                  {formData.confirmPassword && formData.password === formData.confirmPassword && (
+                    <p className="text-sm text-green-600 flex items-center gap-1">
+                      <CheckCircle className="h-4 w-4" />
+                      Passwords match
+                    </p>
+                  )}
                 </div>
 
                 {/* Terms Agreement */}
-                <div className="flex items-start space-x-3 pt-2">
-                  <Checkbox 
-                    id="terms" 
-                    checked={agreeTerms}
-                    onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
-                    className="mt-0.5"
-                  />
-                  <Label htmlFor="terms" className="text-sm leading-5">
-                    I agree to {APP_CONFIG.name}'s{" "}
-                    <Link to="/terms" className="text-primary hover:underline font-medium">
-                      Terms of Service
-                    </Link>
-                    {" "}and{" "}
-                    <Link to="/privacy" className="text-primary hover:underline font-medium">
-                      Privacy Policy
-                    </Link>
-                  </Label>
+                <div className="space-y-2">
+                  <div className="flex items-start space-x-3">
+                    <Checkbox 
+                      id="terms" 
+                      checked={agreeTerms}
+                      onCheckedChange={(checked) => {
+                        setAgreeTerms(checked as boolean);
+                        if (validationErrors.terms) {
+                          setValidationErrors(prev => ({ ...prev, terms: "" }));
+                        }
+                      }}
+                      className={`mt-0.5 ${validationErrors.terms ? 'border-red-500' : ''}`}
+                    />
+                    <Label htmlFor="terms" className="text-sm leading-5">
+                      I agree to {APP_CONFIG.name}'s{" "}
+                      <Link to="/terms" className="text-primary hover:underline font-medium">
+                        Terms of Service
+                      </Link>
+                      {" "}and{" "}
+                      <Link to="/privacy" className="text-primary hover:underline font-medium">
+                        Privacy Policy
+                      </Link>
+                    </Label>
+                  </div>
+                  {validationErrors.terms && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {validationErrors.terms}
+                    </p>
+                  )}
                 </div>
 
                 {/* Submit Button */}

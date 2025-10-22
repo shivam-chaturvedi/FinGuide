@@ -29,7 +29,7 @@ interface Quiz {
   created_at: string
 }
 
-export default function QuizManager() {
+function QuizManager() {
   const { toast } = useToast()
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [loading, setLoading] = useState(true)
@@ -66,7 +66,10 @@ export default function QuizManager() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setQuizzes(data || [])
+      setQuizzes((data || []).map(quiz => ({
+        ...quiz,
+        questions: quiz.questions as unknown as QuizQuestion[]
+      })))
     } catch (error) {
       console.error('Error loading quizzes:', error)
       toast({
@@ -81,24 +84,62 @@ export default function QuizManager() {
 
   const handleSubmitQuiz = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!quizForm.name || quizForm.questions.length === 0) {
+    
+    // Enhanced validation
+    if (!quizForm.name.trim()) {
       toast({
         title: "Error",
-        description: "Please provide a quiz name and at least one question",
+        description: "Please provide a quiz name",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    if (quizForm.questions.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please add at least one question to the quiz",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    // Validate all questions have proper content
+    const invalidQuestions = quizForm.questions.filter(q => 
+      !q.question.trim() || 
+      q.options.some(opt => !opt.trim()) ||
+      q.options.length < 2
+    )
+    
+    if (invalidQuestions.length > 0) {
+      toast({
+        title: "Error",
+        description: "All questions must have a question text and at least 2 options",
         variant: "destructive"
       })
       return
     }
 
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to create quizzes",
+          variant: "destructive"
+        })
+        return
+      }
+
       const quizData = {
-        name: quizForm.name,
-        description: quizForm.description || null,
-        questions: quizForm.questions,
+        name: quizForm.name.trim(),
+        description: quizForm.description?.trim() || null,
+        questions: quizForm.questions as any, // Cast to Json type for database
         passing_score: quizForm.passing_score,
         time_limit_minutes: quizForm.time_limit_minutes || null,
         is_published: quizForm.is_published,
-        created_by: (await supabase.auth.getUser()).data.user?.id
+        created_by: user.id
       }
 
       if (editingQuiz) {
@@ -107,7 +148,11 @@ export default function QuizManager() {
           .update(quizData)
           .eq('id', editingQuiz.id)
 
-        if (error) throw error
+        if (error) {
+          console.error('Update error:', error)
+          throw new Error(`Failed to update quiz: ${error.message}`)
+        }
+        
         toast({
           title: "Success",
           description: "Quiz updated successfully"
@@ -117,7 +162,14 @@ export default function QuizManager() {
           .from('quizzes')
           .insert(quizData)
 
-        if (error) throw error
+        if (error) {
+          console.error('Insert error:', error)
+          if (error.code === '23505') { // Unique constraint violation
+            throw new Error('A quiz with this name already exists')
+          }
+          throw new Error(`Failed to create quiz: ${error.message}`)
+        }
+        
         toast({
           title: "Success",
           description: "Quiz created successfully"
@@ -140,24 +192,55 @@ export default function QuizManager() {
         correctAnswer: 0,
         explanation: ''
       })
-      setShowForm(false)
       setEditingQuiz(null)
+      setShowForm(false)
       loadQuizzes()
     } catch (error) {
       console.error('Error saving quiz:', error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to save quiz"
       toast({
         title: "Error",
-        description: "Failed to save quiz",
+        description: errorMessage,
         variant: "destructive"
       })
     }
   }
 
   const handleAddQuestion = () => {
-    if (!currentQuestion.question || currentQuestion.options.some(opt => !opt.trim())) {
+    // Enhanced validation
+    if (!currentQuestion.question.trim()) {
       toast({
         title: "Error",
-        description: "Please fill in the question and all options",
+        description: "Please enter a question",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    const validOptions = currentQuestion.options.filter(opt => opt.trim())
+    if (validOptions.length < 2) {
+      toast({
+        title: "Error",
+        description: "Please provide at least 2 options",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    if (validOptions.length !== currentQuestion.options.length) {
+      toast({
+        title: "Error",
+        description: "All options must be filled in",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    // Check if correct answer is valid
+    if (currentQuestion.correctAnswer < 0 || currentQuestion.correctAnswer >= validOptions.length) {
+      toast({
+        title: "Error",
+        description: "Please select a valid correct answer",
         variant: "destructive"
       })
       return
@@ -165,13 +248,13 @@ export default function QuizManager() {
 
     const newQuestion: QuizQuestion = {
       ...currentQuestion,
-      id: Date.now().toString()
+      id: `question_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     }
 
-    setQuizForm({
-      ...quizForm,
-      questions: [...quizForm.questions, newQuestion]
-    })
+    setQuizForm(prev => ({
+      ...prev,
+      questions: [...prev.questions, newQuestion]
+    }))
 
     setCurrentQuestion({
       id: '',
@@ -183,10 +266,10 @@ export default function QuizManager() {
   }
 
   const handleRemoveQuestion = (questionId: string) => {
-    setQuizForm({
-      ...quizForm,
-      questions: quizForm.questions.filter(q => q.id !== questionId)
-    })
+    setQuizForm(prev => ({
+      ...prev,
+      questions: prev.questions.filter(q => q.id !== questionId)
+    }))
   }
 
   const handleEditQuiz = (quiz: Quiz) => {
@@ -259,13 +342,13 @@ export default function QuizManager() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Quiz Management</h2>
-          <p className="text-muted-foreground">Create and manage quizzes for your courses</p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-xl sm:text-2xl font-bold">Quiz Management</h2>
+          <p className="text-sm sm:text-base text-muted-foreground">Create and manage quizzes for your courses</p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
+        <Button onClick={() => setShowForm(true)} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Create Quiz
         </Button>
@@ -280,14 +363,14 @@ export default function QuizManager() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmitQuiz} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmitQuiz} className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Quiz Name *</Label>
                   <Input
                     id="name"
                     value={quizForm.name}
-                    onChange={(e) => setQuizForm({ ...quizForm, name: e.target.value })}
+                    onChange={(e) => setQuizForm(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="e.g., Financial Basics Quiz"
                     required
                   />
@@ -301,7 +384,7 @@ export default function QuizManager() {
                     min="0"
                     max="100"
                     value={quizForm.passing_score}
-                    onChange={(e) => setQuizForm({ ...quizForm, passing_score: parseInt(e.target.value) || 80 })}
+                    onChange={(e) => setQuizForm(prev => ({ ...prev, passing_score: parseInt(e.target.value) || 80 }))}
                   />
                 </div>
 
@@ -312,7 +395,7 @@ export default function QuizManager() {
                     type="number"
                     min="1"
                     value={quizForm.time_limit_minutes}
-                    onChange={(e) => setQuizForm({ ...quizForm, time_limit_minutes: parseInt(e.target.value) || 15 })}
+                    onChange={(e) => setQuizForm(prev => ({ ...prev, time_limit_minutes: parseInt(e.target.value) || 15 }))}
                   />
                 </div>
 
@@ -320,7 +403,7 @@ export default function QuizManager() {
                   <Switch
                     id="published"
                     checked={quizForm.is_published}
-                    onCheckedChange={(checked) => setQuizForm({ ...quizForm, is_published: checked })}
+                    onCheckedChange={(checked) => setQuizForm(prev => ({ ...prev, is_published: checked }))}
                   />
                   <Label htmlFor="published">Publish immediately</Label>
                 </div>
@@ -331,7 +414,7 @@ export default function QuizManager() {
                 <Textarea
                   id="description"
                   value={quizForm.description}
-                  onChange={(e) => setQuizForm({ ...quizForm, description: e.target.value })}
+                  onChange={(e) => setQuizForm(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Brief description of the quiz..."
                   rows={3}
                 />
@@ -346,7 +429,7 @@ export default function QuizManager() {
                   <Input
                     id="question"
                     value={currentQuestion.question}
-                    onChange={(e) => setCurrentQuestion({ ...currentQuestion, question: e.target.value })}
+                    onChange={(e) => setCurrentQuestion(prev => ({ ...prev, question: e.target.value }))}
                     placeholder="Enter the question..."
                   />
                 </div>
@@ -354,12 +437,12 @@ export default function QuizManager() {
                 <div className="space-y-2">
                   <Label>Options *</Label>
                   {currentQuestion.options.map((option, index) => (
-                    <div key={index} className="flex items-center space-x-2">
+                    <div key={`current-option-${index}`} className="flex items-center space-x-2">
                       <input
                         type="radio"
                         name="correctAnswer"
                         checked={currentQuestion.correctAnswer === index}
-                        onChange={() => setCurrentQuestion({ ...currentQuestion, correctAnswer: index })}
+                        onChange={() => setCurrentQuestion(prev => ({ ...prev, correctAnswer: index }))}
                         className="h-4 w-4"
                       />
                       <Input
@@ -367,7 +450,7 @@ export default function QuizManager() {
                         onChange={(e) => {
                           const newOptions = [...currentQuestion.options]
                           newOptions[index] = e.target.value
-                          setCurrentQuestion({ ...currentQuestion, options: newOptions })
+                          setCurrentQuestion(prev => ({ ...prev, options: newOptions }))
                         }}
                         placeholder={`Option ${index + 1}`}
                       />
@@ -380,7 +463,7 @@ export default function QuizManager() {
                   <Textarea
                     id="explanation"
                     value={currentQuestion.explanation}
-                    onChange={(e) => setCurrentQuestion({ ...currentQuestion, explanation: e.target.value })}
+                    onChange={(e) => setCurrentQuestion(prev => ({ ...prev, explanation: e.target.value }))}
                     placeholder="Explain why this is the correct answer..."
                     rows={2}
                   />
@@ -396,7 +479,7 @@ export default function QuizManager() {
                 <div className="space-y-4">
                   <h3 className="font-semibold">Questions ({quizForm.questions.length})</h3>
                   {quizForm.questions.map((question, index) => (
-                    <div key={question.id} className="border rounded-lg p-4">
+                    <div key={`question-${question.id}`} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="font-medium">Q{index + 1}: {question.question}</h4>
                         <Button
@@ -412,7 +495,7 @@ export default function QuizManager() {
                       <div className="space-y-1">
                         {question.options.map((option, optionIndex) => (
                           <div
-                            key={optionIndex}
+                            key={`option-${question.id}-${optionIndex}`}
                             className={`text-sm p-2 rounded ${
                               optionIndex === question.correctAnswer
                                 ? 'bg-green-100 text-green-800'
@@ -442,7 +525,6 @@ export default function QuizManager() {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    setShowForm(false)
                     setEditingQuiz(null)
                     setQuizForm({
                       name: '',
@@ -452,6 +534,14 @@ export default function QuizManager() {
                       is_published: false,
                       questions: []
                     })
+                    setCurrentQuestion({
+                      id: '',
+                      question: '',
+                      options: ['', '', '', ''],
+                      correctAnswer: 0,
+                      explanation: ''
+                    })
+                    setShowForm(false)
                   }}
                 >
                   Cancel
@@ -465,15 +555,15 @@ export default function QuizManager() {
       {/* Quizzes List */}
       <div className="space-y-4">
         {quizzes.map((quiz) => (
-          <Card key={quiz.id}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold">{quiz.name}</h3>
-                  <p className="text-muted-foreground mt-1">{quiz.description}</p>
+          <Card key={`quiz-${quiz.id}`}>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold truncate">{quiz.name}</h3>
+                  <p className="text-muted-foreground mt-1 line-clamp-2">{quiz.description}</p>
                   
-                  <div className="flex items-center space-x-4 mt-3">
-                    <Badge variant={quiz.is_published ? "default" : "secondary"}>
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <Badge variant={quiz.is_published ? "default" : "secondary"} className="text-xs">
                       {quiz.is_published ? "Published" : "Draft"}
                     </Badge>
                     <span className="text-sm text-muted-foreground">
@@ -490,13 +580,15 @@ export default function QuizManager() {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2 ml-4">
+                <div className="flex flex-wrap items-center gap-2 lg:ml-4 lg:flex-nowrap">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleEditQuiz(quiz)}
+                    className="text-blue-600 hover:text-blue-700"
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">Edit</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -504,6 +596,9 @@ export default function QuizManager() {
                     onClick={() => toggleQuizPublish(quiz.id, quiz.is_published)}
                   >
                     {quiz.is_published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <span className="hidden sm:inline ml-1">
+                      {quiz.is_published ? 'Unpublish' : 'Publish'}
+                    </span>
                   </Button>
                   <Button
                     variant="outline"
@@ -512,6 +607,7 @@ export default function QuizManager() {
                     className="text-red-600 hover:text-red-700"
                   >
                     <Trash2 className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1">Delete</span>
                   </Button>
                 </div>
               </div>
@@ -522,4 +618,6 @@ export default function QuizManager() {
     </div>
   )
 }
+
+export default QuizManager
 
