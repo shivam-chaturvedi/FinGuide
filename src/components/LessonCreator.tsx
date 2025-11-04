@@ -1,11 +1,12 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
+import FileUploader from '@/components/FileUploader'
 import { Plus, X, Video, FileText, HelpCircle } from 'lucide-react'
 
 interface Lesson {
@@ -15,17 +16,31 @@ interface Lesson {
   duration_minutes: number
   video_url?: string
   text_content?: string
+  file_url?: string
+  file_name?: string
+  file_size?: number
+  file_type?: string
+  quiz_id?: string
   order_index: number
+}
+
+interface Quiz {
+  id: string
+  name: string
+  questions: any[]
+  is_published: boolean
 }
 
 interface LessonCreatorProps {
   onLessonsChange: (lessons: Lesson[]) => void
   initialLessons?: Lesson[]
+  quizzes?: Quiz[]
 }
 
-export default function LessonCreator({ onLessonsChange, initialLessons = [] }: LessonCreatorProps) {
+export default function LessonCreator({ onLessonsChange, initialLessons = [], quizzes = [] }: LessonCreatorProps) {
   const [lessons, setLessons] = useState<Lesson[]>(initialLessons)
   const [showForm, setShowForm] = useState(false)
+  const [uploadedVideo, setUploadedVideo] = useState<any>(null)
   const [currentLesson, setCurrentLesson] = useState<Lesson>({
     id: '',
     title: '',
@@ -34,12 +49,32 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [] }: 
     order_index: lessons.length + 1
   })
 
+  // Sync internal state with initialLessons prop
+  useEffect(() => {
+    console.log('LessonCreator: initialLessons changed:', initialLessons)
+    setLessons(initialLessons)
+  }, [initialLessons])
+
+  const handleVideoUploaded = (files: any[]) => {
+    if (files.length > 0) {
+      setUploadedVideo(files[0])
+      // Update the current lesson with the video URL
+      setCurrentLesson({
+        ...currentLesson,
+        video_url: files[0].url,
+        file_name: files[0].file.name,
+        file_size: files[0].file.size,
+        file_type: files[0].file.type
+      })
+    }
+  }
+
   const handleAddLesson = () => {
     if (!currentLesson.title.trim()) return
 
     const newLesson: Lesson = {
       ...currentLesson,
-      id: Date.now().toString()
+      id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     }
 
     const updatedLessons = [...lessons, newLesson].sort((a, b) => a.order_index - b.order_index)
@@ -54,6 +89,7 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [] }: 
       duration_minutes: 5,
       order_index: updatedLessons.length + 1
     })
+    setUploadedVideo(null)
     setShowForm(false)
   }
 
@@ -77,10 +113,10 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [] }: 
         <div>
           <h3 className="font-semibold">Module Lessons</h3>
           <p className="text-sm text-muted-foreground">
-            Add individual lessons to your module
+            Add individual lessons to your module. You can assign quizzes to any lesson for assessment.
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)} size="sm">
+        <Button type="button" onClick={() => setShowForm(true)} size="sm">
           <Plus className="h-4 w-4 mr-2" />
           Add Lesson
         </Button>
@@ -139,20 +175,51 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [] }: 
                   })}
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lesson-quiz">Assign Quiz (Optional)</Label>
+                <Select
+                  value={currentLesson.quiz_id || 'none'}
+                  onValueChange={(value) => setCurrentLesson({ 
+                    ...currentLesson, 
+                    quiz_id: value === 'none' ? undefined : value 
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a quiz for this lesson" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Quiz</SelectItem>
+                    {quizzes.filter(q => q.is_published).map((quiz) => (
+                      <SelectItem key={quiz.id} value={quiz.id}>
+                        {quiz.name} ({quiz.questions.length} questions)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {currentLesson.type === 'video' && (
               <div className="space-y-2">
-                <Label htmlFor="video-url">Video URL</Label>
-                <Input
-                  id="video-url"
-                  value={currentLesson.video_url || ''}
-                  onChange={(e) => setCurrentLesson({ 
-                    ...currentLesson, 
-                    video_url: e.target.value 
-                  })}
-                  placeholder="https://example.com/video.mp4"
+                <Label>Upload Video</Label>
+                <FileUploader
+                  onFilesUploaded={handleVideoUploaded}
+                  maxFiles={1}
+                  acceptedTypes={['video/*']}
+                  maxSize={500} // 500MB for videos
                 />
+                {uploadedVideo && (
+                  <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg">
+                    <Video className="h-4 w-4 text-green-600" />
+                    <span className="text-sm text-green-700">
+                      Video uploaded: {uploadedVideo.file.name}
+                    </span>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Upload MP4, WebM, or other video formats. Maximum file size: 500MB.
+                </p>
               </div>
             )}
 
@@ -173,10 +240,11 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [] }: 
             )}
 
             <div className="flex gap-3">
-              <Button onClick={handleAddLesson} disabled={!currentLesson.title.trim()}>
+              <Button type="button" onClick={handleAddLesson} disabled={!currentLesson.title.trim()}>
                 Add Lesson
               </Button>
               <Button 
+                type="button"
                 variant="outline" 
                 onClick={() => setShowForm(false)}
               >
@@ -191,46 +259,61 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [] }: 
       {lessons.length > 0 && (
         <div className="space-y-3">
           <h4 className="font-medium">Added Lessons ({lessons.length})</h4>
-          {lessons.map((lesson, index) => (
-            <Card key={lesson.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 mt-1">
-                      {getLessonIcon(lesson.type)}
-                    </div>
-                    <div className="flex-1">
-                      <h5 className="font-medium">{lesson.title}</h5>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Badge variant="outline">{lesson.type}</Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {lesson.duration_minutes} min
-                        </span>
+          {lessons.map((lesson, index) => {
+            const isExistingLesson = lesson.id.startsWith('temp-') === false
+            return (
+              <Card key={lesson.id} className={isExistingLesson ? 'border-green-200 bg-green-50/50' : ''}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 mt-1">
+                        {getLessonIcon(lesson.type)}
                       </div>
-                      {lesson.video_url && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Video: {lesson.video_url}
-                        </p>
-                      )}
-                      {lesson.text_content && (
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                          {lesson.text_content}
-                        </p>
-                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h5 className="font-medium">{lesson.title}</h5>
+                          {isExistingLesson && (
+                            <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300">
+                              Existing
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <Badge variant="outline">{lesson.type}</Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {lesson.duration_minutes} min
+                          </span>
+                          {lesson.quiz_id && (
+                            <Badge variant="secondary" className="text-xs">
+                              Quiz: {quizzes.find(q => q.id === lesson.quiz_id)?.name || 'Unknown Quiz'}
+                            </Badge>
+                          )}
+                        </div>
+                        {lesson.video_url && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Video: {lesson.video_url}
+                          </p>
+                        )}
+                        {lesson.text_content && (
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                            {lesson.text_content}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveLesson(lesson.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveLesson(lesson.id)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>

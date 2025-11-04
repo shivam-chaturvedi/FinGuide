@@ -11,6 +11,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminRoute } from "./components/AdminRoute";
 import { Layout } from "./components/Layout";
 import { LoadingSpinner } from "./components/LoadingSpinner";
+import DOMPatchProvider from "./components/DOMPatchProvider";
 import Home from "./pages/Home";
 import ModulesDynamic from "./pages/ModulesDynamic";
 import ModuleDetail from "./pages/ModuleDetail";
@@ -83,21 +84,23 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <NextThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <ThemeProvider>
-        <LanguageProvider>
-          <AuthProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <AppContent />
-            </TooltipProvider>
-          </AuthProvider>
-        </LanguageProvider>
-      </ThemeProvider>
-    </NextThemeProvider>
-  </QueryClientProvider>
+  <DOMPatchProvider>
+    <QueryClientProvider client={queryClient}>
+      <NextThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <ThemeProvider>
+          <LanguageProvider>
+            <AuthProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <AppContent />
+              </TooltipProvider>
+            </AuthProvider>
+          </LanguageProvider>
+        </ThemeProvider>
+      </NextThemeProvider>
+    </QueryClientProvider>
+  </DOMPatchProvider>
 );
 
 export default App;

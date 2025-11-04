@@ -12,7 +12,7 @@ export function ThemeToggle() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 ">
       <Button
         variant="ghost"
         size="sm"

@@ -27,6 +27,7 @@ import {
 import QuizManager from '@/components/QuizManager'
 import FileUploader from '@/components/FileUploader'
 import LessonCreator from '@/components/LessonCreator'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 interface Module {
   id: string
@@ -40,6 +41,7 @@ interface Module {
   file_name: string | null
   file_size: number | null
   file_type: string | null
+  quiz_id: string | null
   is_published: boolean
   created_at: string
   updated_at: string
@@ -75,6 +77,8 @@ export default function AdminDashboard() {
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([])
   const [manualLessons, setManualLessons] = useState<any[]>([])
   const [uploading, setUploading] = useState(false)
+  const [editingModule, setEditingModule] = useState<Module | null>(null)
+  const [existingLessons, setExistingLessons] = useState<any[]>([])
 
   // Redirect if not admin
   useEffect(() => {
@@ -127,12 +131,106 @@ export default function AdminDashboard() {
     }
   }
 
+  const loadModuleLessons = async (moduleId: string) => {
+    try {
+      console.log('Loading lessons for module:', moduleId)
+      const { data, error } = await supabase
+        .from('lessons')
+        .select('*')
+        .eq('module_id', moduleId)
+        .order('order_index', { ascending: true })
+
+      if (error) {
+        console.error('Error loading lessons:', error)
+        throw error
+      }
+      
+      console.log('Loaded lessons:', data)
+      setExistingLessons(data || [])
+      return data || []
+    } catch (error) {
+      console.error('Error loading module lessons:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load module lessons",
+        variant: "destructive"
+      })
+      return []
+    }
+  }
+
   const handleFilesUploaded = (files: any[]) => {
     setUploadedFiles(files)
   }
 
   const handleLessonsChange = (lessons: any[]) => {
     setManualLessons(lessons)
+  }
+
+  const handleEditModule = async (module: Module) => {
+    setEditingModule(module)
+    setActiveTab('upload')
+    
+    // Populate form with existing module data
+    setModuleForm({
+      title: module.title,
+      description: module.description || '',
+      content: module.content,
+      category: module.category as 'basics' | 'management' | 'remittance' | 'advanced' || 'basics',
+      difficulty_level: module.difficulty_level || 'beginner',
+      level: (module.difficulty_level?.charAt(0).toUpperCase() + module.difficulty_level?.slice(1)) as 'Beginner' | 'Intermediate' | 'Advanced' || 'Beginner',
+      estimated_duration: module.estimated_duration || 30,
+      duration_weeks: 1, // Default value since this might not exist in old modules
+      rating: 4.0, // Default value
+      price: 'Free' as 'Free' | 'Premium', // Default value
+      thumbnail: '',
+      what_youll_learn: [],
+      prerequisites: [],
+      quiz_id: module.quiz_id || 'none',
+      is_published: module.is_published
+    })
+
+    // Load existing lessons for this module
+    const lessons = await loadModuleLessons(module.id)
+    
+    // Convert existing lessons to manual lessons format
+    const formattedLessons = lessons.map(lesson => ({
+      id: lesson.id,
+      title: lesson.title,
+      type: lesson.type,
+      duration_minutes: lesson.duration_minutes,
+      video_url: lesson.video_url,
+      text_content: lesson.text_content,
+      quiz_id: (lesson as any).quiz_id,
+      order_index: lesson.order_index
+    }))
+    
+    console.log('Formatted lessons for editing:', formattedLessons)
+    setManualLessons(formattedLessons)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingModule(null)
+    setExistingLessons([])
+    setManualLessons([])
+    setUploadedFiles([])
+    setModuleForm({
+      title: '',
+      description: '',
+      content: '',
+      category: 'basics',
+      difficulty_level: 'beginner',
+      level: 'Beginner',
+      estimated_duration: 30,
+      duration_weeks: 1,
+      rating: 4.0,
+      price: 'Free',
+      thumbnail: '',
+      what_youll_learn: [],
+      prerequisites: [],
+      quiz_id: 'none',
+      is_published: false
+    })
   }
 
   const handleSubmitModule = async (e: React.FormEvent) => {
@@ -149,94 +247,117 @@ export default function AdminDashboard() {
         file_type: uploadedFiles[0].file.type
       } : null
 
-      const { error } = await supabase
-        .from('modules')
-        .insert({
-          ...moduleForm,
-          quiz_id: moduleForm.quiz_id === 'none' ? null : moduleForm.quiz_id,
-          created_by: user.id,
-          file_url: fileData?.file_url || null,
-          file_name: fileData?.file_name || null,
-          file_size: fileData?.file_size || null,
-          file_type: fileData?.file_type || null
-        })
+      const moduleData = {
+        ...moduleForm,
+        quiz_id: moduleForm.quiz_id === 'none' ? null : moduleForm.quiz_id,
+        file_url: fileData?.file_url || null,
+        file_name: fileData?.file_name || null,
+        file_size: fileData?.file_size || null,
+        file_type: fileData?.file_type || null
+      }
 
-      if (error) throw error
+      let moduleId: string
 
-      // Create lessons for uploaded files and manual lessons
-      if (uploadedFiles.length > 0 || manualLessons.length > 0) {
-        const moduleId = (await supabase
+      if (editingModule) {
+        // Update existing module
+        const { error } = await supabase
+          .from('modules')
+          .update(moduleData)
+          .eq('id', editingModule.id)
+
+        if (error) throw error
+        moduleId = editingModule.id
+
+        // Delete existing lessons
+        await supabase
+          .from('lessons')
+          .delete()
+          .eq('module_id', moduleId)
+      } else {
+        // Create new module
+        const { error } = await supabase
+          .from('modules')
+          .insert({
+            ...moduleData,
+            created_by: user.id
+          })
+
+        if (error) throw error
+
+        // Get the new module ID
+        const { data } = await supabase
           .from('modules')
           .select('id')
           .eq('title', moduleForm.title)
           .eq('created_by', user.id)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single()).data?.id
+          .single()
 
-        if (moduleId) {
-          const fileLessons = uploadedFiles.map((fileObj, index) => ({
+        moduleId = data?.id
+      }
+
+      // Create lessons for uploaded files and manual lessons
+      if (moduleId && (uploadedFiles.length > 0 || manualLessons.length > 0)) {
+        const fileLessons = uploadedFiles.map((fileObj, index) => ({
+          module_id: moduleId,
+          title: fileObj.file.name,
+          type: fileObj.file.type.startsWith('video/') ? 'video' : 
+                fileObj.file.type.startsWith('image/') ? 'text' : 'text',
+          duration_minutes: 5, // Default duration
+          video_url: fileObj.file.type.startsWith('video/') ? fileObj.url : null,
+          text_content: fileObj.file.type.startsWith('image/') ? 
+            `Image: ${fileObj.file.name}` : 
+            fileObj.file.type === 'application/pdf' ? 
+              `PDF Document: ${fileObj.file.name}` : 
+              `Document: ${fileObj.file.name}`,
+          file_url: fileObj.url,
+          file_name: fileObj.file.name,
+          file_size: fileObj.file.size,
+          file_type: fileObj.file.type,
+          quiz_id: null, // Uploaded files don't have quizzes by default
+          is_completed: false,
+          is_locked: false,
+          order_index: index + 1
+        }))
+
+        const allLessons = [...fileLessons, ...manualLessons.map((lesson, index) => {
+          // Remove the id field since Supabase will generate it
+          const { id, ...lessonWithoutId } = lesson
+          return {
+            ...lessonWithoutId,
             module_id: moduleId,
-            title: fileObj.file.name,
-            type: fileObj.file.type.startsWith('video/') ? 'video' : 
-                  fileObj.file.type.startsWith('image/') ? 'text' : 'text',
-            duration_minutes: 5, // Default duration
-            video_url: fileObj.file.type.startsWith('video/') ? fileObj.url : null,
-            text_content: fileObj.file.type.startsWith('image/') ? 
-              `Image: ${fileObj.file.name}` : 
-              fileObj.file.type === 'application/pdf' ? 
-                `PDF Document: ${fileObj.file.name}` : 
-                `Document: ${fileObj.file.name}`,
-            file_url: fileObj.url,
-            file_name: fileObj.file.name,
-            file_size: fileObj.file.size,
-            file_type: fileObj.file.type,
-            order_index: index + 1
-          }))
+            order_index: fileLessons.length + index + 1,
+            quiz_id: lesson.quiz_id || null,
+            is_completed: false,
+            is_locked: false
+          }
+        })]
 
-          const allLessons = [...fileLessons, ...manualLessons.map((lesson, index) => ({
-            ...lesson,
-            module_id: moduleId,
-            order_index: fileLessons.length + index + 1
-          }))]
-
-          await supabase.from('lessons').insert(allLessons)
+        console.log('Inserting lessons:', allLessons)
+        const { error: lessonsError } = await supabase.from('lessons').insert(allLessons)
+        
+        if (lessonsError) {
+          console.error('Error inserting lessons:', lessonsError)
+          throw new Error(`Failed to create lessons: ${lessonsError.message}`)
         }
       }
 
       toast({
         title: "Success",
-        description: "Module created successfully"
+        description: editingModule ? "Module updated successfully" : "Module created successfully"
       })
 
       // Reset form
-      setModuleForm({
-        title: '',
-        description: '',
-        content: '',
-        category: 'basics',
-        difficulty_level: 'beginner',
-        level: 'Beginner',
-        estimated_duration: 30,
-        duration_weeks: 1,
-        rating: 4.0,
-        price: 'Free',
-        thumbnail: '',
-        what_youll_learn: [],
-        prerequisites: [],
-        quiz_id: 'none',
-        is_published: false
-      })
-      setUploadedFiles([])
-      setManualLessons([])
+      handleCancelEdit()
 
       // Reload modules
       loadModules()
     } catch (error) {
-      console.error('Error creating module:', error)
+      console.error('Error saving module:', error)
       toast({
         title: "Error",
-        description: "Failed to create module",
+        description: editingModule ? "Failed to update module" : "Failed to create module",
         variant: "destructive"
       })
     } finally {
@@ -303,30 +424,30 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Module Management</h1>
-              <p className="text-gray-600 dark:text-gray-300 mt-2">Upload and manage educational modules</p>
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
+        <div className="mb-4 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white truncate">Module Management</h1>
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1">Upload and manage educational modules</p>
             </div>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 w-fit">
               Admin Panel
             </Badge>
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="modules">My Modules</TabsTrigger>
-            <TabsTrigger value="quizzes">Quizzes</TabsTrigger>
-            <TabsTrigger value="upload">Upload Module</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 py-2">Overview</TabsTrigger>
+            <TabsTrigger value="modules" className="text-xs sm:text-sm px-2 py-2">Modules</TabsTrigger>
+            <TabsTrigger value="quizzes" className="text-xs sm:text-sm px-2 py-2">Quizzes</TabsTrigger>
+            <TabsTrigger value="upload" className="text-xs sm:text-sm px-2 py-2">Upload</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Modules</CardTitle>
@@ -384,27 +505,38 @@ export default function AdminDashboard() {
                     No modules found. Upload your first module!
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {modules.slice(0, 5).map((module) => (
-                      <div key={module.id} className="flex items-center justify-between p-4 border rounded-lg dark:border-gray-700 dark:bg-gray-800/50">
-                        <div className="flex-1">
-                          <h3 className="font-medium dark:text-white">{module.title}</h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{module.description}</p>
-                          <div className="flex items-center space-x-2 mt-2">
-                            <Badge variant={module.is_published ? "default" : "secondary"}>
+                      <div key={module.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-lg dark:border-gray-700 dark:bg-gray-800/50 gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium dark:text-white truncate">{module.title}</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">{module.description}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                            <Badge variant={module.is_published ? "default" : "secondary"} className="text-xs">
                               {module.is_published ? "Published" : "Draft"}
                             </Badge>
-                            <Badge variant="outline">{module.difficulty_level}</Badge>
+                            <Badge variant="outline" className="text-xs">{module.difficulty_level}</Badge>
                             <span className="text-xs text-gray-500 dark:text-gray-400">
                               {new Date(module.created_at).toLocaleDateString()}
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 flex-shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditModule(module)}
+                            className="text-green-600 hover:text-green-700 h-8 w-8 p-0"
+                            title="Edit Module"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => toggleModulePublish(module.id, module.is_published)}
+                            className="h-8 w-8 p-0"
+                            title={module.is_published ? 'Unpublish' : 'Publish'}
                           >
                             {module.is_published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </Button>
@@ -412,7 +544,8 @@ export default function AdminDashboard() {
                             variant="outline"
                             size="sm"
                             onClick={() => deleteModule(module.id)}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
+                            title="Delete Module"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -436,42 +569,42 @@ export default function AdminDashboard() {
                 {loading ? (
                   <div className="text-center py-8 dark:text-gray-300">Loading modules...</div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-4 sm:space-y-6">
                     {modules.map((module) => (
-                      <div key={module.id} className="border rounded-lg p-6 dark:border-gray-700 dark:bg-gray-800/50">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold dark:text-white">{module.title}</h3>
-                            <p className="text-gray-600 dark:text-gray-300 mt-1">{module.description}</p>
+                      <div key={module.id} className="border rounded-lg p-4 sm:p-6 dark:border-gray-700 dark:bg-gray-800/50">
+                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg font-semibold dark:text-white truncate">{module.title}</h3>
+                            <p className="text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">{module.description}</p>
                             
-                            <div className="flex items-center space-x-4 mt-3">
-                              <Badge variant={module.is_published ? "default" : "secondary"}>
+                            <div className="flex flex-wrap items-center gap-2 mt-3">
+                              <Badge variant={module.is_published ? "default" : "secondary"} className="text-xs">
                                 {module.is_published ? "Published" : "Draft"}
                               </Badge>
-                              <Badge variant="outline">{module.difficulty_level}</Badge>
-                              <span className="text-sm text-gray-500 dark:text-gray-400">
+                              <Badge variant="outline" className="text-xs">{module.difficulty_level}</Badge>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
                                 {module.estimated_duration} min
                               </span>
                               {module.category && (
-                                <Badge variant="outline">{module.category}</Badge>
+                                <Badge variant="outline" className="text-xs">{module.category}</Badge>
                               )}
                             </div>
 
                             {module.file_name && (
-                              <div className="mt-3 flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                                <FileText className="h-4 w-4" />
-                                <span>{module.file_name}</span>
+                              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                                <FileText className="h-4 w-4 flex-shrink-0" />
+                                <span className="truncate">{module.file_name}</span>
                                 {module.file_size && (
-                                  <span>({Math.round(module.file_size / 1024)} KB)</span>
+                                  <span className="text-xs">({Math.round(module.file_size / 1024)} KB)</span>
                                 )}
                                 {module.file_url && (
                                   <Button
                                     variant="link"
                                     size="sm"
                                     onClick={() => window.open(module.file_url, '_blank')}
-                                    className="p-0 h-auto"
+                                    className="p-0 h-auto text-xs"
                                   >
-                                    <Download className="h-4 w-4" />
+                                    <Download className="h-3 w-3" />
                                   </Button>
                                 )}
                               </div>
@@ -482,14 +615,26 @@ export default function AdminDashboard() {
                             </div>
                           </div>
 
-                          <div className="flex items-center space-x-2 ml-4">
+                          <div className="flex flex-wrap items-center gap-2 lg:ml-4 lg:flex-nowrap">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditModule(module)}
+                              className="text-green-600 hover:text-green-700"
+                            >
+                              <Edit className="h-4 w-4" />
+                              <span className="hidden sm:inline ml-1">Edit</span>
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => toggleModulePublish(module.id, module.is_published)}
+                              className="text-blue-600 hover:text-blue-700"
                             >
                               {module.is_published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              {module.is_published ? 'Unpublish' : 'Publish'}
+                              <span className="hidden sm:inline ml-1">
+                                {module.is_published ? 'Unpublish' : 'Publish'}
+                              </span>
                             </Button>
                             <Button
                               variant="outline"
@@ -498,6 +643,7 @@ export default function AdminDashboard() {
                               className="text-red-600 hover:text-red-700"
                             >
                               <Trash2 className="h-4 w-4" />
+                              <span className="hidden sm:inline ml-1">Delete</span>
                             </Button>
                           </div>
                         </div>
@@ -511,7 +657,9 @@ export default function AdminDashboard() {
 
           {/* Quizzes Tab */}
           <TabsContent value="quizzes" className="space-y-6">
-            <QuizManager />
+            <ErrorBoundary>
+              <QuizManager />
+            </ErrorBoundary>
           </TabsContent>
 
           {/* Upload Module Tab */}
@@ -520,11 +668,26 @@ export default function AdminDashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Upload className="h-5 w-5" />
-                  <span>Upload New Module</span>
+                  <span>{editingModule ? 'Edit Module' : 'Upload New Module'}</span>
                 </CardTitle>
                 <CardDescription>
-                  Create a new educational module for users
+                  {editingModule ? 'Update the selected module and its lessons' : 'Create a new educational module for users'}
                 </CardDescription>
+                {editingModule && (
+                  <div className="mt-2">
+                    <Badge variant="outline" className="text-sm">
+                      Editing: {editingModule.title}
+                    </Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelEdit}
+                      className="ml-2"
+                    >
+                      Cancel Edit
+                    </Button>
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmitModule} className="space-y-6">
@@ -739,9 +902,14 @@ export default function AdminDashboard() {
 
                   <div className="space-y-2">
                     <Label>Or Create Lessons Manually</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Create individual lessons and optionally assign quizzes to each lesson for assessment.
+                      {editingModule && ' Existing lessons will be loaded for editing.'}
+                    </p>
                     <LessonCreator
                       onLessonsChange={handleLessonsChange}
                       initialLessons={manualLessons}
+                      quizzes={quizzes}
                     />
                   </div>
 
@@ -758,10 +926,10 @@ export default function AdminDashboard() {
                     {uploading ? (
                       <div className="flex items-center gap-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
-                        Creating Module...
+                        {editingModule ? 'Updating Module...' : 'Creating Module...'}
                       </div>
                     ) : (
-                      'Create Module'
+                      editingModule ? 'Update Module' : 'Create Module'
                     )}
                   </Button>
                 </form>
