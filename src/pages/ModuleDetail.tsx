@@ -23,6 +23,17 @@ import {
   TrendingUp,
   DollarSign
 } from 'lucide-react';
+import DOMPurify from 'dompurify';
+
+const ModuleViewer = ({ html, className = '' }: { html: string; className?: string }) => {
+  const safeHtml = DOMPurify.sanitize(html || '');
+  return (
+    <div
+      className={`prose prose-base sm:prose-lg lg:prose-xl max-w-none ${className}`}
+      dangerouslySetInnerHTML={{ __html: safeHtml }}
+    />
+  );
+};
 
 interface QuizQuestion {
   id: string;
@@ -585,59 +596,6 @@ export default function ModuleDetail() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatModuleContent = (content: string) => {
-    const lines = content.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-    const listItems: { heading: string; description: string }[] = [];
-    const paragraphs: string[] = [];
-
-    lines.forEach(line => {
-      const match = line.match(/^([0-9]+|[a-zA-Z])[.)]\s*(.+)$/);
-      if (match) {
-        const body = match[2].trim();
-        const [heading, ...rest] = body.split(/[:\-–—]\s+/);
-        const description = rest.join(' ').trim();
-        listItems.push({
-          heading: (heading || body).trim(),
-          description
-        });
-      } else {
-        paragraphs.push(line);
-      }
-    });
-
-    if (listItems.length === 0) {
-      return (
-        <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-          {content}
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-4">
-        {paragraphs.length > 0 && (
-          <div className="space-y-2 text-muted-foreground leading-relaxed">
-            {paragraphs.map((para, idx) => (
-              <p key={`para-${idx}`}>{para}</p>
-            ))}
-          </div>
-        )}
-        <ul className="list-disc pl-5 space-y-3">
-          {listItems.map((item, idx) => (
-            <li key={`list-${idx}`} className="space-y-1">
-              <div className="font-semibold text-foreground">{item.heading}</div>
-              {item.description && (
-                <div className="text-muted-foreground leading-relaxed">
-                  {item.description}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  };
-
   const renderLessonContent = (lesson: LessonData) => {
     // Handle quiz lessons
     if (lesson.type === 'quiz' && lesson.quiz_id) {
@@ -676,11 +634,7 @@ export default function ModuleDetail() {
             </video>
           </div>
           {lesson.text_content && (
-            <div className="prose max-w-none">
-              <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {lesson.text_content}
-              </div>
-            </div>
+            <ModuleViewer html={lesson.text_content} className="text-muted-foreground" />
           )}
         </div>
       );
@@ -758,9 +712,9 @@ export default function ModuleDetail() {
             <div className="border rounded-lg p-6 text-center">
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="font-semibold mb-2">{lesson.title}</h3>
-              <p className="text-muted-foreground mb-4">
-                {lesson.text_content || 'Document content'}
-              </p>
+              <div className="text-muted-foreground mb-4">
+                {lesson.text_content ? <ModuleViewer html={lesson.text_content} /> : 'Document content'}
+              </div>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-3">
@@ -789,11 +743,11 @@ export default function ModuleDetail() {
     // Handle text lessons
     return (
       <div className="space-y-4">
-        <div className="prose max-w-none">
-          <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-            {lesson.text_content || 'No content available'}
-          </div>
-        </div>
+        {lesson.text_content ? (
+          <ModuleViewer html={lesson.text_content} className="text-muted-foreground" />
+        ) : (
+          <div className="leading-relaxed whitespace-pre-wrap text-muted-foreground">No content available</div>
+        )}
         {lesson.file_url && (
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
             <div className="flex items-center gap-3">
@@ -937,9 +891,7 @@ export default function ModuleDetail() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="prose max-w-none">
-                {formatModuleContent(moduleData.content)}
-              </div>
+              <ModuleViewer html={moduleData.content || ''} />
             </CardContent>
           </Card>
 

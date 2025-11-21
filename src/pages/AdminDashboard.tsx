@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,7 @@ import QuizManager from '@/components/QuizManager'
 import FileUploader from '@/components/FileUploader'
 import LessonCreator from '@/components/LessonCreator'
 import ErrorBoundary from '@/components/ErrorBoundary'
+const loadReactQuill = () => import('react-quill')
 
 interface Module {
   id: string
@@ -55,7 +56,6 @@ export default function AdminDashboard() {
   const [quizzes, setQuizzes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
-  const contentRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Module form state
   const [moduleForm, setModuleForm] = useState({
@@ -80,7 +80,7 @@ export default function AdminDashboard() {
   const [uploading, setUploading] = useState(false)
   const [editingModule, setEditingModule] = useState<Module | null>(null)
   const [existingLessons, setExistingLessons] = useState<any[]>([])
-  const [bulletInput, setBulletInput] = useState('')
+  const [QuillEditor, setQuillEditor] = useState<any>(null)
 
   // Redirect if not admin
   useEffect(() => {
@@ -97,6 +97,21 @@ export default function AdminDashboard() {
       loadQuizzes()
     }
   }, [isAdmin])
+
+  useEffect(() => {
+    let mounted = true
+    Promise.all([
+      loadReactQuill(),
+      import('react-quill/dist/quill.snow.css'),
+    ]).then(([mod]) => {
+      if (mounted) {
+        setQuillEditor(() => mod.default)
+      }
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const loadModules = async () => {
     try {
@@ -172,7 +187,6 @@ export default function AdminDashboard() {
   const handleEditModule = async (module: Module) => {
     setEditingModule(module)
     setActiveTab('upload')
-    setBulletInput('')
     
     // Populate form with existing module data
     setModuleForm({
@@ -217,7 +231,6 @@ export default function AdminDashboard() {
     setExistingLessons([])
     setManualLessons([])
     setUploadedFiles([])
-    setBulletInput('')
     setModuleForm({
       title: '',
       description: '',
@@ -237,40 +250,26 @@ export default function AdminDashboard() {
     })
   }
 
-  const getNextBulletNumber = () => {
-    const numbers = moduleForm.content
-      .split(/\r?\n/)
-      .map(line => line.trim())
-      .map(line => {
-        const match = line.match(/^(\d+)[.)]/)
-        return match ? parseInt(match[1], 10) : null
-      })
-      .filter((num): num is number => num !== null)
+  const quillModules = useMemo(() => ({
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ color: [] }, { background: [] }],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      [{ align: [] }],
+      ['link'],
+      ['clean'],
+    ],
+  }), [])
 
-    return numbers.length > 0 ? Math.max(...numbers) + 1 : 1
-  }
-
-  const handleAddBulletPoint = () => {
-    const text = bulletInput.trim()
-    if (!text) return
-
-    const nextNumber = getNextBulletNumber()
-    const prefix = `${nextNumber}. `
-    const trimmedContent = moduleForm.content.trimEnd()
-    const needsNewline = trimmedContent ? '\n' : ''
-    const updatedContent = `${trimmedContent}${needsNewline}${prefix}${text}`
-
-    setModuleForm({ ...moduleForm, content: updatedContent })
-    setBulletInput('')
-    setTimeout(() => contentRef.current?.focus(), 0)
-  }
-
-  const handleBulletKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      handleAddBulletPoint()
-    }
-  }
+  const quillFormats = useMemo(() => [
+    'header',
+    'bold', 'italic', 'underline', 'strike',
+    'color', 'background',
+    'list', 'bullet',
+    'align',
+    'link',
+  ], [])
 
   const handleSubmitModule = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -877,35 +876,30 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="bulletInput">Quick bullet point</Label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Input
-                        id="bulletInput"
-                        placeholder="Enter a key point (press Enter to add)"
-                        value={bulletInput}
-                        onChange={(e) => setBulletInput(e.target.value)}
-                        onKeyDown={handleBulletKeyDown}
-                      />
-                      <Button type="button" variant="secondary" onClick={handleAddBulletPoint} className="sm:w-36">
-                        Add bullet
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      We&apos;ll auto-number it and insert it into Module Content so migrants see clean bullets.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="content">Module Content *</Label>
-                    <Textarea
-                      id="content"
-                      ref={contentRef}
-                      value={moduleForm.content}
-                      onChange={(e) => setModuleForm({ ...moduleForm, content: e.target.value })}
-                      placeholder="Detailed content of the module..."
-                      rows={8}
-                      required
-                    />
+                    {QuillEditor ? (
+                      <div className="rounded-md border border-input bg-background">
+                        <QuillEditor
+                          id="content"
+                          theme="snow"
+                          value={moduleForm.content}
+                          onChange={(value: string) => setModuleForm({ ...moduleForm, content: value })}
+                          modules={quillModules}
+                          formats={quillFormats}
+                          placeholder="Detailed content of the module..."
+                          className="quill-editor"
+                        />
+                      </div>
+                    ) : (
+                      <Textarea
+                        id="content"
+                        value={moduleForm.content}
+                        onChange={(e) => setModuleForm({ ...moduleForm, content: e.target.value })}
+                        placeholder="Detailed content of the module..."
+                        rows={8}
+                        required
+                      />
+                    )}
                   </div>
 
                   <div className="space-y-2">

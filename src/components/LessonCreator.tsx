@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import FileUploader from '@/components/FileUploader'
 import { Plus, X, Video, FileText, HelpCircle } from 'lucide-react'
+
+const loadReactQuill = () => import('react-quill')
 
 interface Lesson {
   id: string
@@ -41,6 +43,7 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [], qu
   const [lessons, setLessons] = useState<Lesson[]>(initialLessons)
   const [showForm, setShowForm] = useState(false)
   const [uploadedVideo, setUploadedVideo] = useState<any>(null)
+  const [QuillEditor, setQuillEditor] = useState<any>(null)
   const [currentLesson, setCurrentLesson] = useState<Lesson>({
     id: '',
     title: '',
@@ -54,6 +57,40 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [], qu
     console.log('LessonCreator: initialLessons changed:', initialLessons)
     setLessons(initialLessons)
   }, [initialLessons])
+
+  useEffect(() => {
+    let mounted = true
+    Promise.all([
+      loadReactQuill(),
+      import('react-quill/dist/quill.snow.css'),
+    ]).then(([mod]) => {
+      if (mounted) {
+        setQuillEditor(() => mod.default)
+      }
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const quillModules = useMemo(() => ({
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      [{ align: [] }],
+      ['link'],
+      ['clean'],
+    ],
+  }), [])
+
+  const quillFormats = useMemo(() => [
+    'header',
+    'bold', 'italic', 'underline', 'strike',
+    'list', 'bullet',
+    'align',
+    'link',
+  ], [])
 
   const handleVideoUploaded = (files: any[]) => {
     if (files.length > 0) {
@@ -226,16 +263,33 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [], qu
             {currentLesson.type === 'text' && (
               <div className="space-y-2">
                 <Label htmlFor="text-content">Content</Label>
-                <Textarea
-                  id="text-content"
-                  value={currentLesson.text_content || ''}
-                  onChange={(e) => setCurrentLesson({ 
-                    ...currentLesson, 
-                    text_content: e.target.value 
-                  })}
-                  placeholder="Enter the lesson content..."
-                  rows={4}
-                />
+                {QuillEditor ? (
+                  <div className="rounded-md border border-input bg-background">
+                    <QuillEditor
+                      id="text-content"
+                      theme="snow"
+                      value={currentLesson.text_content || ''}
+                      onChange={(value: string) => setCurrentLesson({ 
+                        ...currentLesson, 
+                        text_content: value 
+                      })}
+                      modules={quillModules}
+                      formats={quillFormats}
+                      placeholder="Enter the lesson content..."
+                    />
+                  </div>
+                ) : (
+                  <Textarea
+                    id="text-content"
+                    value={currentLesson.text_content || ''}
+                    onChange={(e) => setCurrentLesson({ 
+                      ...currentLesson, 
+                      text_content: e.target.value 
+                    })}
+                    placeholder="Enter the lesson content..."
+                    rows={4}
+                  />
+                )}
               </div>
             )}
 
@@ -319,4 +373,3 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [], qu
     </div>
   )
 }
-
