@@ -366,7 +366,7 @@ export default function ModuleDetail() {
       const { data, error } = await supabase
         .from('quiz_attempts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user.id) 
         .eq('module_id', moduleData?.id)
         .order('completed_at', { ascending: false });
 
@@ -583,6 +583,59 @@ export default function ModuleDetail() {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatModuleContent = (content: string) => {
+    const lines = content.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const listItems: { heading: string; description: string }[] = [];
+    const paragraphs: string[] = [];
+
+    lines.forEach(line => {
+      const match = line.match(/^([0-9]+|[a-zA-Z])[.)]\s*(.+)$/);
+      if (match) {
+        const body = match[2].trim();
+        const [heading, ...rest] = body.split(/[:\-–—]\s+/);
+        const description = rest.join(' ').trim();
+        listItems.push({
+          heading: (heading || body).trim(),
+          description
+        });
+      } else {
+        paragraphs.push(line);
+      }
+    });
+
+    if (listItems.length === 0) {
+      return (
+        <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+          {content}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {paragraphs.length > 0 && (
+          <div className="space-y-2 text-muted-foreground leading-relaxed">
+            {paragraphs.map((para, idx) => (
+              <p key={`para-${idx}`}>{para}</p>
+            ))}
+          </div>
+        )}
+        <ul className="list-disc pl-5 space-y-3">
+          {listItems.map((item, idx) => (
+            <li key={`list-${idx}`} className="space-y-1">
+              <div className="font-semibold text-foreground">{item.heading}</div>
+              {item.description && (
+                <div className="text-muted-foreground leading-relaxed">
+                  {item.description}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
   };
 
   const renderLessonContent = (lesson: LessonData) => {
@@ -885,9 +938,7 @@ export default function ModuleDetail() {
             </CardHeader>
             <CardContent>
               <div className="prose max-w-none">
-                <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                  {moduleData.content}
-                </div>
+                {formatModuleContent(moduleData.content)}
               </div>
             </CardContent>
           </Card>

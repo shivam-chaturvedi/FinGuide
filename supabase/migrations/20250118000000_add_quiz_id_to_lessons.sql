@@ -8,3 +8,6 @@ CREATE INDEX IF NOT EXISTS idx_lessons_quiz_id ON public.lessons(quiz_id);
 -- Add comment to explain the purpose
 COMMENT ON COLUMN public.lessons.quiz_id IS 'Optional quiz assignment for individual lessons within a module';
 
+
+
+
