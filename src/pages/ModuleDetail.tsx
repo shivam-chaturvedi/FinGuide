@@ -118,11 +118,12 @@ export default function ModuleDetail() {
   const [lessonProgress, setLessonProgress] = useState<Record<string, boolean>>({});
   const [quizAttempts, setQuizAttempts] = useState<any[]>([]);
   const [quizData, setQuizData] = useState<QuizData | null>(null);
+  const [quizLoading, setQuizLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<LessonData | null>(null);
-  const [showLessonModal, setShowLessonModal] = useState(false);
   const [lessonCompleted, setLessonCompleted] = useState(false);
+  const [showCourseContent, setShowCourseContent] = useState(true);
   const [showQuiz, setShowQuiz] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
@@ -222,26 +223,9 @@ export default function ModuleDetail() {
         }
       }
 
-      // Fetch quiz data if module has a quiz
-      if (module.quiz_id) {
-        const { data: quiz, error: quizError } = await supabase
-          .from('quizzes')
-          .select('*')
-          .eq('id', module.quiz_id)
-          .eq('is_published', true)
-          .single();
-
-        if (quizError) {
-          console.error('Error fetching quiz:', quizError);
-        } else {
-          console.log('Quiz data:', quiz);
-          // Transform the quiz data to match our interface
-          const transformedQuiz: QuizData = {
-            ...quiz,
-            questions: quiz.questions as any as QuizQuestion[]
-          };
-          setQuizData(transformedQuiz);
-        }
+      // Load user module progress to show personalized status/progress
+      if (user) {
+        await loadUserModuleProgress(module.id);
       }
 
     } catch (error) {
@@ -254,6 +238,33 @@ export default function ModuleDetail() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUserModuleProgress = async (moduleId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_module_progress')
+        .select('status, progress, quiz_score, completed_at')
+        .eq('user_id', user?.id)
+        .eq('module_id', moduleId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = no rows; ignore
+        throw error;
+      }
+
+      if (data) {
+        setModuleData(prev => prev ? {
+          ...prev,
+          status: data.status || prev.status,
+          progress: data.progress ?? prev.progress ?? 0,
+          quiz_score: data.quiz_score ?? prev.quiz_score
+        } : prev);
+      }
+    } catch (err) {
+      console.error('Error loading user module progress:', err);
     }
   };
 
@@ -276,6 +287,8 @@ export default function ModuleDetail() {
 
       if (moduleProgressError) throw moduleProgressError;
 
+      setModuleData(prev => prev ? { ...prev, status: 'in-progress', progress: prev.progress ?? 0 } : prev);
+
       toast({
         title: "Success",
         description: "Module started successfully"
@@ -292,7 +305,13 @@ export default function ModuleDetail() {
   };
 
   const handleStartQuiz = () => {
-    if (!quizData) return;
+    if (!quizData || quizLoading) {
+      toast({
+        title: "Quiz not ready",
+        description: "Please wait while we load the quiz for this lesson.",
+      });
+      return;
+    }
     setShowQuiz(true);
     setQuizAnswers({});
     setQuizScore(null);
@@ -301,12 +320,18 @@ export default function ModuleDetail() {
   };
 
   const handleSubmitQuiz = async () => {
-    if (!quizData || !user || !moduleData) return;
+    if (!quizData || !user || !selectedLesson) return;
 
-    // Calculate score
-    let correctAnswers = 0;
     const totalQuestions = quizData.questions.length;
+    if (totalQuestions === 0) {
+      toast({
+        title: "No questions",
+        description: "This quiz has no questions assigned yet.",
+      });
+      return;
+    }
 
+    let correctAnswers = 0;
     quizData.questions.forEach(question => {
       if (quizAnswers[question.id] === question.correctAnswer) {
         correctAnswers++;
@@ -314,45 +339,15 @@ export default function ModuleDetail() {
     });
 
     const score = Math.round((correctAnswers / totalQuestions) * 100);
-    const passed = score >= quizData.passing_score;
+    const passingScore = quizData.passing_score ?? 80;
+    const passed = score >= passingScore;
 
     setQuizScore(score);
     setQuizCompleted(true);
     setShowQuizResults(true);
 
     try {
-      // Record quiz attempt
-      const { error: attemptError } = await supabase
-        .from('quiz_attempts')
-        .insert({
-          user_id: user.id,
-          quiz_id: quizData.id,
-          module_id: moduleData.id,
-          answers: quizAnswers,
-          score: score,
-          passed: passed,
-          completed_at: new Date().toISOString()
-        });
-
-      if (attemptError) {
-        console.error('Error recording quiz attempt:', attemptError);
-      }
-
-      // Update module progress with quiz score
-      const { error: progressError } = await supabase
-        .from('user_module_progress')
-        .upsert({
-          user_id: user.id,
-          module_id: moduleData.id,
-          quiz_score: score,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,module_id'
-        });
-
-      if (progressError) {
-        console.error('Error updating module progress:', progressError);
-      }
+      await handleQuizComplete(score, passed);
 
       toast({
         title: passed ? "Quiz Passed!" : "Quiz Failed",
@@ -360,6 +355,7 @@ export default function ModuleDetail() {
         variant: passed ? "default" : "destructive"
       });
 
+      setShowQuiz(false);
     } catch (error) {
       console.error('Error submitting quiz:', error);
       toast({
@@ -370,15 +366,16 @@ export default function ModuleDetail() {
     }
   };
 
-  const fetchQuizAttempts = async (lessonId: string) => {
-    if (!user) return [];
+  const fetchQuizAttempts = async (quizId: string | null) => {
+    if (!user || !moduleData || !quizId) return [];
 
     try {
       const { data, error } = await supabase
         .from('quiz_attempts')
         .select('*')
         .eq('user_id', user.id) 
-        .eq('module_id', moduleData?.id)
+        .eq('module_id', moduleData.id)
+        .eq('quiz_id', quizId)
         .order('completed_at', { ascending: false });
 
       if (error) {
@@ -393,22 +390,76 @@ export default function ModuleDetail() {
     }
   };
 
-  const updateModuleProgress = async () => {
+  const loadLessonQuiz = async (quizId: string | null) => {
+    if (!quizId) {
+      setQuizData(null);
+      return;
+    }
+
+    try {
+      setQuizLoading(true);
+      const { data: quiz, error: quizError } = await supabase
+        .from('quizzes')
+        .select('*')
+        .eq('id', quizId)
+        .eq('is_published', true)
+        .single();
+
+      if (quizError) {
+        console.error('Error fetching quiz:', quizError);
+        setQuizData(null);
+        return;
+      }
+
+      const transformedQuiz: QuizData = {
+        ...(quiz as QuizData),
+        questions: (quiz?.questions || []) as any as QuizQuestion[],
+      };
+      setQuizData(transformedQuiz);
+    } catch (error) {
+      console.error('Error loading quiz:', error);
+      setQuizData(null);
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedLesson) return;
+
+    setLessonCompleted(lessonProgress[selectedLesson.id] || false);
+
+    if (selectedLesson.quiz_id) {
+      fetchQuizAttempts(selectedLesson.quiz_id).then(setQuizAttempts);
+    } else {
+      setQuizAttempts([]);
+    }
+    setQuizAnswers({});
+    setQuizScore(null);
+    setQuizCompleted(false);
+    setShowQuizResults(false);
+    setShowQuiz(false);
+    loadLessonQuiz(selectedLesson.quiz_id);
+  }, [selectedLesson, lessonProgress]);
+
+  const updateModuleProgress = async (extraCompletedLessonId?: string) => {
     if (!user || !moduleData) return;
 
     try {
-      // Count completed lessons for this module
-      const result = await supabase
-        .from('user_lesson_progress')
-        .select('lesson_id')
-        .eq('user_id', user.id)
-        .eq('module_id', moduleData.id)
-        .eq('is_completed', true);
+      // Count completed lessons using local progress map (freshest) with DB fallback
+      let completedCount = lessons.filter(l => lessonProgress[l.id] || l.id === extraCompletedLessonId).length;
+      if (completedCount === 0) {
+        const result = await supabase
+          .from('user_lesson_progress')
+          .select('lesson_id')
+          .eq('user_id', user.id)
+          .eq('module_id', moduleData.id)
+          .eq('is_completed', true);
 
-      if (result.error) throw result.error;
-      const completedLessons = result.data;
+        if (result.error) throw result.error;
+        completedCount = result.data?.length || 0;
+      }
 
-      const completedCount = completedLessons?.length || 0;
       const totalLessons = lessons.length;
       const progressPercentage = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
@@ -435,60 +486,15 @@ export default function ModuleDetail() {
 
       console.log(`Module progress updated: ${progressPercentage}% (${completedCount}/${totalLessons} lessons)`);
 
+      // Reflect updated progress/status locally for immediate UI feedback
+      setModuleData(prev => prev ? {
+        ...prev,
+        progress: progressPercentage,
+        status
+      } : prev);
+
     } catch (error) {
       console.error('Error updating module progress:', error);
-    }
-  };
-
-  const handleLessonComplete = async () => {
-    if (!selectedLesson || !user) return;
-
-    try {
-      // Mark lesson as completed in user progress
-      const { error } = await supabase
-        .from('user_lesson_progress')
-        .upsert({
-          user_id: user.id,
-          lesson_id: selectedLesson.id,
-          module_id: selectedLesson.module_id,
-          is_completed: true,
-          completed_at: new Date().toISOString()
-        });
-
-      if (error) throw error;
-
-      // Update module progress
-      await updateModuleProgress();
-
-      // Update local state
-      setLessonCompleted(true);
-      
-      // Update lesson progress map
-      setLessonProgress(prev => ({
-        ...prev,
-        [selectedLesson.id]: true
-      }));
-
-      toast({
-        title: "Lesson Completed!",
-        description: "Great job! You've completed this lesson.",
-      });
-
-      // If lesson has a quiz, show quiz option
-      if (selectedLesson.quiz_id) {
-        toast({
-          title: "Quiz Available",
-          description: "Take the quiz to test your knowledge!",
-        });
-      }
-
-    } catch (error) {
-      console.error('Error completing lesson:', error);
-      toast({
-        title: "Error",
-        description: "Failed to mark lesson as complete",
-        variant: "destructive"
-      });
     }
   };
 
@@ -511,17 +517,39 @@ export default function ModuleDetail() {
 
       if (error) throw error;
 
-      toast({
-        title: passed ? "Quiz Passed!" : "Quiz Failed",
-        description: `You scored ${score}%. ${passed ? 'Congratulations!' : 'Try again to improve your score.'}`,
-        variant: passed ? "default" : "destructive"
-      });
+      // Upsert lesson progress; mark complete only when passed
+      const { error: lessonProgressError } = await supabase
+        .from('user_lesson_progress')
+        .upsert({
+          user_id: user.id,
+          module_id: selectedLesson.module_id,
+          lesson_id: selectedLesson.id,
+          is_completed: passed,
+          completed_at: passed ? new Date().toISOString() : null,
+          quiz_answers: quizAnswers,
+          quiz_score: score,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,lesson_id'
+        });
 
-      // Refresh quiz attempts
+      if (lessonProgressError) throw lessonProgressError;
+
+      // Update local completion state
+      setLessonCompleted(passed);
+      setLessonProgress(prev => ({
+        ...prev,
+        [selectedLesson.id]: passed
+      }));
+
+      // Refresh quiz attempts scoped to this quiz
       if (selectedLesson?.quiz_id) {
-        const attempts = await fetchQuizAttempts(selectedLesson.id);
+        const attempts = await fetchQuizAttempts(selectedLesson.quiz_id);
         setQuizAttempts(attempts);
       }
+
+      // Refresh module progress to reflect completed lesson count
+      await updateModuleProgress(passed ? selectedLesson.id : undefined);
 
     } catch (error) {
       console.error('Error saving quiz attempt:', error);
@@ -573,6 +601,22 @@ export default function ModuleDetail() {
   const handleRetakeQuiz = () => {
     resetQuiz();
     setShowQuiz(true);
+  };
+
+  const toTitleCase = (value?: string | null) => {
+    if (!value) return '';
+    return value
+      .replace(/[-_]/g, ' ')
+      .split(' ')
+      .filter(Boolean)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const formatStatus = (status?: string | null) => {
+    if (!status) return 'Not started';
+    if (status === 'in-progress') return 'In progress';
+    return toTitleCase(status);
   };
 
   const getCategoryIcon = (category: string) => {
@@ -885,14 +929,25 @@ export default function ModuleDetail() {
           {/* Module Content */}
           <Card>
             <CardHeader>
-              <div className="flex items-center gap-3">
-                {getCategoryIcon(moduleData.category)}
-                <h2 className="text-xl font-semibold">Course Content</h2>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  {getCategoryIcon(moduleData.category)}
+                  <h2 className="text-xl font-semibold">Course Content</h2>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowCourseContent(prev => !prev)}
+                >
+                  {showCourseContent ? 'Hide' : 'Show'} Content
+                </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              <ModuleViewer html={moduleData.content || ''} />
-            </CardContent>
+            {showCourseContent && (
+              <CardContent>
+                <ModuleViewer html={moduleData.content || ''} />
+              </CardContent>
+            )}
           </Card>
 
           {/* Selected Lesson Content */}
@@ -911,6 +966,69 @@ export default function ModuleDetail() {
               </CardHeader>
               <CardContent>
                 {renderLessonContent(selectedLesson)}
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t pt-4 mt-6">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {lessonCompleted && (
+                      <Badge variant="default" className="bg-green-600">
+                        ✓ Completed
+                      </Badge>
+                    )}
+                    {selectedLesson?.quiz_id && (
+                      <Badge variant="outline" className="text-purple-600 border-purple-300">
+                        Quiz Available
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {selectedLesson?.quiz_id && (
+                      <Button 
+                        onClick={() => {
+                          resetQuiz();
+                          setShowQuiz(true);
+                        }}
+                        variant="outline"
+                        className="border-purple-300 text-purple-600 hover:bg-purple-50"
+                        disabled={quizLoading || !quizData || (quizData.questions.length === 0)}
+                      >
+                        <HelpCircle className="h-4 w-4 mr-2" />
+                        {quizLoading ? 'Loading...' : 'Take Quiz'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {selectedLesson?.quiz_id && quizAttempts.length > 0 && (
+                  <div className="space-y-4 pt-4 mt-4 border-t">
+                    <h3 className="font-semibold text-lg">Quiz Attempts History</h3>
+                    <div className="space-y-3">
+                      {quizAttempts.map((attempt, index) => (
+                        <div key={attempt.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${attempt.passed ? 'bg-green-500' : 'bg-red-500'}`} />
+                            <div>
+                              <p className="font-medium">
+                                Attempt #{index + 1}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(attempt.completed_at).toLocaleDateString()} at {new Date(attempt.completed_at).toLocaleTimeString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className={`font-semibold ${attempt.passed ? 'text-green-600' : 'text-red-600'}`}>
+                              {attempt.score}%
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {attempt.passed ? 'Passed' : 'Failed'}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -947,35 +1065,41 @@ export default function ModuleDetail() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="text-xs">{moduleData.level}</Badge>
-                <Badge variant="outline" className="text-xs">{moduleData.category}</Badge>
-                <Badge variant="outline" className="text-xs">{moduleData.price}</Badge>
+                <Badge variant="outline" className="text-xs">{toTitleCase(moduleData.level) || 'Beginner'}</Badge>
+                <Badge variant="outline" className="text-xs">{toTitleCase(moduleData.category) || 'General'}</Badge>
+                <Badge variant="outline" className="text-xs">{moduleData.price || 'Free'}</Badge>
               </div>
               
               <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Duration:</span>
-                  <span>{moduleData.duration_weeks} weeks</span>
+                  <span>{moduleData.duration_weeks ?? 0} weeks</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Estimated Time:</span>
-                  <span>{moduleData.estimated_duration} minutes</span>
+                  <span>{moduleData.estimated_duration ?? 0} minutes</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Rating:</span>
                   <div className="flex items-center gap-1">
                     <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    <span>{moduleData.rating}</span>
+                    <span>{moduleData.rating ?? 0}</span>
                   </div>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Difficulty:</span>
-                  <span>{moduleData.difficulty_level}</span>
+                  <span>{toTitleCase(moduleData.difficulty_level || moduleData.level) || 'Beginner'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status:</span>
-                  <span className="capitalize">{moduleData.status}</span>
+                  <span className="capitalize">{formatStatus(moduleData.status)}</span>
                 </div>
+                {typeof moduleData.progress === 'number' && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Progress:</span>
+                    <span>{moduleData.progress}%</span>
+                  </div>
+                )}
               </div>
 
               {moduleData.what_youll_learn && moduleData.what_youll_learn.length > 0 && (
@@ -1023,19 +1147,10 @@ export default function ModuleDetail() {
                         ? 'bg-primary/10 border border-primary/20'
                         : 'hover:bg-gray-50'
                     }`}
-                    onClick={async () => {
-                      console.log('Lesson clicked:', lesson)
-                      setSelectedLesson(lesson)
-                      setShowLessonModal(true)
-                      setLessonCompleted(lessonProgress[lesson.id] || false)
-                      
-                      // Fetch quiz attempts if lesson has a quiz
-                      if (lesson.quiz_id) {
-                        const attempts = await fetchQuizAttempts(lesson.id);
-                        setQuizAttempts(attempts);
-                      } else {
-                        setQuizAttempts([]);
-                      }
+                    onClick={() => {
+                      console.log('Lesson clicked:', lesson);
+                      setSelectedLesson(lesson);
+                      setLessonCompleted(lessonProgress[lesson.id] || false);
                     }}
                   >
                     <div className="flex-shrink-0">
@@ -1061,264 +1176,45 @@ export default function ModuleDetail() {
             </Card>
           )}
 
-          {/* Quiz Section */}
-          {quizData && (
+          {/* Quiz Section (per lesson) */}
+          {selectedLesson?.quiz_id && (
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
-                  <h3 className="font-semibold text-sm sm:text-base">Quiz: {quizData.name}</h3>
+                  <h3 className="font-semibold text-sm sm:text-base">
+                    {quizData ? `Quiz: ${quizData.name}` : 'Quiz'}
+                  </h3>
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground">{quizData.description}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  {quizData ? quizData.description : 'Loading the quiz for this lesson...'}
+                </p>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 sm:flex sm:items-center sm:justify-between text-xs sm:text-sm gap-2">
-                  <span>Questions: {quizData.questions.length}</span>
-                  <span>Passing: {quizData.passing_score}%</span>
-                  {quizData.time_limit_minutes && (
-                    <span className="col-span-2 sm:col-span-1">Time: {quizData.time_limit_minutes} min</span>
-                  )}
-                </div>
-                
-                {!showQuiz ? (
-                  <Button 
-                    onClick={handleStartQuiz} 
-                    className="w-full"
-                    disabled={!user}
-                  >
-                    <HelpCircle className="h-4 w-4 mr-2" />
-                    {user ? 'Start Quiz' : 'Login to Start Quiz'}
-                  </Button>
-                ) : (
-                  <div className="space-y-4">
-                    {!showQuizResults ? (
-                      <div className="space-y-4">
-                        {quizData.questions.map((question, index) => (
-                          <div key={question.id} className="border rounded-lg p-3 sm:p-4">
-                            <h4 className="font-medium mb-3 text-sm sm:text-base leading-tight">
-                              {index + 1}. {question.question}
-                            </h4>
-                            <div className="space-y-2">
-                              {question.options.map((option, optionIndex) => (
-                                <label
-                                  key={optionIndex}
-                                  className="flex items-start gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer"
-                                >
-                                  <input
-                                    type="radio"
-                                    name={question.id}
-                                    value={optionIndex}
-                                    checked={quizAnswers[question.id] === optionIndex}
-                                    onChange={() => handleQuizAnswer(question.id, optionIndex)}
-                                    className="h-4 w-4 text-primary mt-0.5 flex-shrink-0"
-                                  />
-                                  <span className="text-xs sm:text-sm leading-relaxed">{option}</span>
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                        
-                        <div className="flex gap-2">
-                          <Button 
-                            onClick={handleSubmitQuiz}
-                            className="flex-1"
-                            disabled={Object.keys(quizAnswers).length !== quizData.questions.length}
-                          >
-                            Submit Quiz
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            onClick={() => setShowQuiz(false)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="text-center p-4 sm:p-6 bg-gray-50 rounded-lg">
-                          <div className="text-2xl sm:text-3xl font-bold text-primary mb-2">
-                            {quizScore}%
-                          </div>
-                          <div className="text-base sm:text-lg font-medium mb-2">
-                            {quizScore && quizScore >= quizData.passing_score ? 'Quiz Passed!' : 'Quiz Failed'}
-                          </div>
-                          <div className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                            {quizScore && quizScore >= quizData.passing_score 
-                              ? 'Congratulations! You have successfully completed the quiz.'
-                              : `You need ${quizData.passing_score}% to pass. Try again to improve your score.`
-                            }
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-3">
-                          <h4 className="font-medium text-sm sm:text-base">Review Answers:</h4>
-                          {quizData.questions.map((question, index) => {
-                            const userAnswer = quizAnswers[question.id];
-                            const isCorrect = userAnswer === question.correctAnswer;
-                            return (
-                              <div key={question.id} className="border rounded-lg p-3">
-                                <div className="flex items-start justify-between mb-2 gap-2">
-                                  <h5 className="font-medium text-xs sm:text-sm leading-tight flex-1">
-                                    {index + 1}. {question.question}
-                                  </h5>
-                                  <div className={`px-2 py-1 rounded text-xs flex-shrink-0 ${
-                                    isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                  }`}>
-                                    {isCorrect ? 'Correct' : 'Incorrect'}
-                                  </div>
-                                </div>
-                                <div className="space-y-1 text-xs sm:text-sm">
-                                  <div className="text-muted-foreground">
-                                    <span className="font-medium">Your answer:</span> {userAnswer !== undefined ? question.options[userAnswer] : 'Not answered'}
-                                  </div>
-                                  <div className="text-muted-foreground">
-                                    <span className="font-medium">Correct answer:</span> {question.options[question.correctAnswer]}
-                                  </div>
-                                  <div className="text-muted-foreground italic leading-relaxed">
-                                    {question.explanation}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          <Button 
-                            onClick={handleRetakeQuiz}
-                            className="flex-1"
-                          >
-                            Retake Quiz
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            onClick={() => setShowQuiz(false)}
-                          >
-                            Close
-                          </Button>
-                        </div>
-                      </div>
+                {quizData && (
+                  <div className="grid grid-cols-2 sm:flex sm:items-center sm:justify-between text-xs sm:text-sm gap-2">
+                    <span>Questions: {quizData.questions.length}</span>
+                    <span>Passing: {quizData.passing_score}%</span>
+                    {quizData.time_limit_minutes && (
+                      <span className="col-span-2 sm:col-span-1">Time: {quizData.time_limit_minutes} min</span>
                     )}
                   </div>
                 )}
+                
+                <Button 
+                  onClick={handleStartQuiz} 
+                  className="w-full"
+                  disabled={!user || quizLoading || !quizData || quizData.questions.length === 0}
+                >
+                  <HelpCircle className="h-4 w-4 mr-2" />
+                  {quizLoading ? 'Loading quiz...' : user ? 'Take Quiz' : 'Login to Start Quiz'}
+                </Button>
               </CardContent>
             </Card>
           )}
         </div>
       </div>
 
-      {/* Lesson Modal */}
-      <Dialog open={showLessonModal} onOpenChange={setShowLessonModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              {selectedLesson?.type === "video" && <Video className="h-5 w-5 text-red-500" />}
-              {selectedLesson?.type === "text" && <FileText className="h-5 w-5 text-blue-500" />}
-              {selectedLesson?.type === "quiz" && <HelpCircle className="h-5 w-5 text-purple-500" />}
-              {selectedLesson?.title}
-            </DialogTitle>
-            <DialogDescription>
-              Duration: {selectedLesson?.duration_minutes} minutes
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {/* Lesson Content */}
-            {selectedLesson && renderLessonContent(selectedLesson)}
-            
-            {/* Lesson Actions */}
-            <div className="flex items-center justify-between pt-4 border-t">
-              <div className="flex items-center gap-2">
-                {lessonCompleted && (
-                  <Badge variant="default" className="bg-green-600">
-                    ✓ Completed
-                  </Badge>
-                )}
-                {selectedLesson?.quiz_id && (
-                  <Badge variant="outline" className="text-purple-600 border-purple-300">
-                    Quiz Available
-                  </Badge>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2">
-                {!lessonCompleted && (
-                  <Button 
-                    onClick={handleLessonComplete}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    Mark as Complete
-                  </Button>
-                )}
-                
-                {lessonCompleted && (
-                  <Button 
-                    disabled
-                    className="bg-green-600 opacity-75"
-                  >
-                    ✓ Completed
-                  </Button>
-                )}
-                
-                {selectedLesson?.quiz_id && (
-                  <Button 
-                    onClick={() => {
-                      resetQuiz();
-                      setShowQuiz(true);
-                    }}
-                    variant="outline"
-                    className="border-purple-300 text-purple-600 hover:bg-purple-50"
-                  >
-                    <HelpCircle className="h-4 w-4 mr-2" />
-                    Take Quiz
-                  </Button>
-                )}
-                
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowLessonModal(false)}
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-            
-            {/* Quiz Attempts History */}
-            {selectedLesson?.quiz_id && quizAttempts.length > 0 && (
-              <div className="space-y-4 pt-4 border-t">
-                <h3 className="font-semibold text-lg">Quiz Attempts History</h3>
-                <div className="space-y-3">
-                  {quizAttempts.map((attempt, index) => (
-                    <div key={attempt.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${attempt.passed ? 'bg-green-500' : 'bg-red-500'}`} />
-                        <div>
-                          <p className="font-medium">
-                            Attempt #{index + 1}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(attempt.completed_at).toLocaleDateString()} at {new Date(attempt.completed_at).toLocaleTimeString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={`font-semibold ${attempt.passed ? 'text-green-600' : 'text-red-600'}`}>
-                          {attempt.score}%
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {attempt.passed ? 'Passed' : 'Failed'}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
       {showQuiz && quizData && (
         <Dialog open={showQuiz} onOpenChange={(open) => {
           setShowQuiz(open);

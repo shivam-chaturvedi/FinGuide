@@ -805,10 +805,39 @@ export default function ModulesDynamic() {
     );
   }
 
-  const handleStartModule = (module: Module) => {
+  const handleStartModule = async (module: Module) => {
     if (module.status === "locked" || !user) return;
-    // Navigate to module detail page
-    navigate(`/dashboard/modules/${module.id}`);
+
+    try {
+      // Ensure module progress is tracked as in-progress
+      const { error } = await supabase
+        .from('user_module_progress')
+        .upsert({
+          user_id: user.id,
+          module_id: module.id,
+          status: 'in-progress',
+          progress: module.progress || 0,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,module_id'
+        });
+
+      if (error) throw error;
+
+      // Reflect status locally so button shows "Resume"
+      setModules(prev =>
+        prev.map(m => m.id === module.id ? { ...m, status: 'in-progress' } : m)
+      );
+
+      navigate(`/dashboard/modules/${module.id}`);
+    } catch (error) {
+      console.error('Error starting module:', error);
+      toast({
+        title: "Error",
+        description: "Unable to start this course right now.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleLessonComplete = async (lesson: Lesson) => {
@@ -1109,7 +1138,7 @@ export default function ModulesDynamic() {
                     onClick={() => handleStartModule(module)}
                   >
                     {module.status === "completed" ? "Review Course" :
-                      module.status === "in-progress" ? "Continue Learning" :
+                      module.status === "in-progress" ? "Resume Course" :
                         module.status === "locked" ? "Locked" : "Start Course"}
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
