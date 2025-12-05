@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -113,6 +113,33 @@ export default function ModulesDynamic() {
       }
     }
   }, [user, authLoading]);
+
+  useEffect(() => {
+    const handleProgressUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<{ moduleId: string; progress: number; status: Module['status'] }>;
+      const detail = customEvent?.detail;
+      if (!detail?.moduleId) return;
+
+      setModules(prevModules =>
+        prevModules.map(module =>
+          module.id === detail.moduleId
+            ? { ...module, progress: detail.progress, status: detail.status }
+            : module
+        )
+      );
+
+      setSelectedModule(prev =>
+        prev && prev.id === detail.moduleId
+          ? { ...prev, progress: detail.progress, status: detail.status }
+          : prev
+      );
+    };
+
+    window.addEventListener('module-progress-updated', handleProgressUpdate as EventListener);
+    return () => {
+      window.removeEventListener('module-progress-updated', handleProgressUpdate as EventListener);
+    };
+  }, []);
 
   const loadModules = async () => {
     try {
@@ -602,14 +629,6 @@ export default function ModulesDynamic() {
                 )}
 
                 <div className="flex gap-3 mt-6">
-                  <Button
-                    onClick={() => handleLessonComplete(currentLesson)}
-                    className="flex-1"
-                    disabled={currentLesson.isCompleted}
-                  >
-                    {currentLesson.isCompleted ? "Completed" : "Complete Lesson"}
-                  </Button>
-
                   {/* Previous Lesson Button */}
                   {selectedModule.lessons.findIndex(l => l.id === currentLesson.id) > 0 && (
                     <Button
@@ -840,11 +859,10 @@ export default function ModulesDynamic() {
     }
   };
 
-  const handleLessonComplete = async (lesson: Lesson) => {
+  const handleLessonComplete = useCallback(async (lesson: Lesson) => {
     if (!user || !selectedModule) return;
 
     try {
-      // Mark lesson as completed
       const { error: lessonProgressError } = await supabase
         .from('user_lesson_progress')
         .upsert({
@@ -858,7 +876,6 @@ export default function ModulesDynamic() {
 
       if (lessonProgressError) throw lessonProgressError;
 
-      // Update module progress
       const completedLessons = selectedModule.lessons.filter(l => l.isCompleted || l.id === lesson.id).length;
       const totalLessons = selectedModule.lessons.length;
       const newProgress = Math.round((completedLessons / totalLessons) * 100);
@@ -879,7 +896,6 @@ export default function ModulesDynamic() {
 
       if (moduleProgressError) throw moduleProgressError;
 
-      // Update local state
       setModules(prevModules =>
         prevModules.map(m =>
           m.id === selectedModule.id
@@ -895,7 +911,8 @@ export default function ModulesDynamic() {
         description: "Great job! Keep up the good work.",
       });
 
-      // Auto-advance to next lesson
+      setCurrentLesson(prev => prev && prev.id === lesson.id ? { ...prev, isCompleted: true } : prev);
+
       const currentIndex = selectedModule.lessons.findIndex(l => l.id === lesson.id);
       const nextLesson = selectedModule.lessons[currentIndex + 1];
 
@@ -915,7 +932,12 @@ export default function ModulesDynamic() {
         variant: "destructive"
       });
     }
-  };
+  }, [selectedModule, user, toast]);
+
+  useEffect(() => {
+    if (!currentLesson || currentLesson.type === "quiz" || currentLesson.isCompleted) return;
+    void handleLessonComplete(currentLesson);
+  }, [currentLesson?.id, handleLessonComplete]);
 
   const handleQuizSubmit = async (lesson: Lesson) => {
     if (!lesson.content.quizQuestions || !user || !selectedModule) return;
@@ -1130,7 +1152,7 @@ export default function ModulesDynamic() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Button
                     className="w-full"
                     disabled={module.status === "locked"}
@@ -1143,14 +1165,18 @@ export default function ModulesDynamic() {
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
 
-                  {module.status === "in-progress" && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Progress</span>
+                      <span>{Math.min(Math.max(module.progress ?? 0, 0), 100)}%</span>
+                    </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
                         className="bg-primary h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${module.progress}%` }}
+                        style={{ width: `${Math.min(Math.max(module.progress ?? 0, 0), 100)}%` }}
                       />
                     </div>
-                  )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

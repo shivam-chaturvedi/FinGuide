@@ -251,7 +251,6 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-
       {/* Settings */}
       <div className="space-y-3">
 

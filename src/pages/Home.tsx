@@ -4,13 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BookOpen, Calculator, Send } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { APP_CONFIG } from "@/config/app";
-import { useEffect, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function Home() {
   const { theme } = useTheme();
   const { t } = useLanguage();
-
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   return (
     <div className="p-4 space-y-6">

@@ -6,6 +6,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
@@ -107,10 +110,25 @@ interface LessonData {
   updated_at: string;
 }
 
+interface LessonDraft {
+  title: string;
+  duration_minutes: number;
+  video_url: string;
+  text_content: string;
+}
+
+interface QuizReview {
+  answers: Record<string, number>;
+  questions: QuizQuestion[];
+  score: number;
+  passed: boolean;
+  timestamp: string;
+}
+
 export default function ModuleDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { toast } = useToast();
   
   const [moduleData, setModuleData] = useState<ModuleData | null>(null);
@@ -123,13 +141,24 @@ export default function ModuleDetail() {
   const [error, setError] = useState<string | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<LessonData | null>(null);
   const [lessonCompleted, setLessonCompleted] = useState(false);
-  const [showCourseContent, setShowCourseContent] = useState(true);
   const [showQuiz, setShowQuiz] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [quizCompleted, setQuizCompleted] = useState(false);
-  const [showQuizResults, setShowQuizResults] = useState(false);
+  const [isEditingLesson, setIsEditingLesson] = useState(false);
+  const [lessonDraft, setLessonDraft] = useState<LessonDraft>({
+    title: '',
+    duration_minutes: 0,
+    video_url: '',
+    text_content: ''
+  });
+  const [savingLesson, setSavingLesson] = useState(false);
+  const [lastQuizReview, setLastQuizReview] = useState<QuizReview | null>(null);
+  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
+  const [selectedAttemptLabel, setSelectedAttemptLabel] = useState<string>('');
+  const [selectedAttemptReview, setSelectedAttemptReview] = useState<QuizReview | null>(null);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -162,6 +191,59 @@ export default function ModuleDetail() {
     } catch (error) {
       console.error('Error fetching lesson progress:', error);
       return {};
+    }
+  };
+
+  const handleLessonDraftChange = (field: keyof LessonDraft, value: string) => {
+    const nextValue = field === 'duration_minutes' ? Number(value) || 0 : value;
+    setLessonDraft(prev => ({
+      ...prev,
+      [field]: nextValue
+    } as LessonDraft));
+  };
+
+  const handleSaveLessonEdits = async () => {
+    if (!selectedLesson) return;
+
+    setSavingLesson(true);
+    try {
+      const updates = {
+        title: lessonDraft.title,
+        duration_minutes: Number(lessonDraft.duration_minutes) || 0,
+        video_url: lessonDraft.video_url || null,
+        text_content: lessonDraft.text_content || null,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('lessons')
+        .update(updates)
+        .eq('id', selectedLesson.id);
+
+      if (error) throw error;
+
+      const updatedLesson = {
+        ...selectedLesson,
+        ...updates
+      };
+
+      setLessons(prev => prev.map(lesson => lesson.id === selectedLesson.id ? updatedLesson : lesson));
+      setSelectedLesson(updatedLesson);
+
+      toast({
+        title: "Lesson updated",
+        description: "Your changes have been saved."
+      });
+      setIsEditingLesson(false);
+    } catch (err) {
+      console.error('Error updating lesson:', err);
+      toast({
+        title: "Error",
+        description: "Failed to save lesson changes",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingLesson(false);
     }
   };
 
@@ -312,11 +394,14 @@ export default function ModuleDetail() {
       });
       return;
     }
+    setLastQuizReview(null);
+    setSelectedAttemptId(null);
+    setSelectedAttemptLabel('');
+    setSelectedAttemptReview(null);
     setShowQuiz(true);
     setQuizAnswers({});
     setQuizScore(null);
     setQuizCompleted(false);
-    setShowQuizResults(false);
   };
 
   const handleSubmitQuiz = async () => {
@@ -344,7 +429,13 @@ export default function ModuleDetail() {
 
     setQuizScore(score);
     setQuizCompleted(true);
-    setShowQuizResults(true);
+    setSelectedAttemptId(null);
+    setSelectedAttemptLabel('');
+    setSelectedAttemptReview(null);
+    const review = createQuizReview({ ...quizAnswers }, score, passed, new Date().toISOString());
+    if (review) {
+      setLastQuizReview(review);
+    }
 
     try {
       await handleQuizComplete(score, passed);
@@ -425,7 +516,23 @@ export default function ModuleDetail() {
   };
 
   useEffect(() => {
-    if (!selectedLesson) return;
+    if (!selectedLesson) {
+      syncLessonDraftWithSelection();
+      setIsEditingLesson(false);
+      setLastQuizReview(null);
+      setSelectedAttemptId(null);
+      setSelectedAttemptLabel('');
+      setSelectedAttemptReview(null);
+      setLessonCompleted(false);
+      return;
+    }
+
+    syncLessonDraftWithSelection();
+    setIsEditingLesson(false);
+    setLastQuizReview(null);
+    setSelectedAttemptId(null);
+    setSelectedAttemptLabel('');
+    setSelectedAttemptReview(null);
 
     setLessonCompleted(lessonProgress[selectedLesson.id] || false);
 
@@ -437,7 +544,6 @@ export default function ModuleDetail() {
     setQuizAnswers({});
     setQuizScore(null);
     setQuizCompleted(false);
-    setShowQuizResults(false);
     setShowQuiz(false);
     loadLessonQuiz(selectedLesson.quiz_id);
   }, [selectedLesson, lessonProgress]);
@@ -493,6 +599,15 @@ export default function ModuleDetail() {
         status
       } : prev);
 
+      const eventDetail = {
+        moduleId: moduleData.id,
+        progress: progressPercentage,
+        status
+      };
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('module-progress-updated', { detail: eventDetail }));
+      }
     } catch (error) {
       console.error('Error updating module progress:', error);
     }
@@ -585,7 +700,18 @@ export default function ModuleDetail() {
     setQuizAnswers({});
     setQuizScore(null);
     setQuizCompleted(false);
-    setShowQuizResults(false);
+    setSelectedAttemptId(null);
+    setSelectedAttemptLabel('');
+    setSelectedAttemptReview(null);
+  };
+
+  const syncLessonDraftWithSelection = () => {
+    setLessonDraft({
+      title: selectedLesson?.title || '',
+      duration_minutes: selectedLesson?.duration_minutes || 0,
+      video_url: selectedLesson?.video_url || '',
+      text_content: selectedLesson?.text_content || ''
+    });
   };
 
   const calculateQuizScore = (answers: Record<string, number>, questions: any[]) => {
@@ -598,9 +724,131 @@ export default function ModuleDetail() {
     return Math.round((correct / questions.length) * 100);
   };
 
+  const normalizeAnswers = (answers?: Record<string, number | string>) => {
+    const normalized: Record<string, number> = {};
+    if (!answers) return normalized;
+    Object.entries(answers).forEach(([key, value]) => {
+      const parsed = typeof value === 'number' ? value : Number(value);
+      if (!Number.isNaN(parsed)) {
+        normalized[key] = parsed;
+      }
+    });
+    return normalized;
+  };
+
+  const createQuizReview = (answers: Record<string, number>, score: number, passed: boolean, timestamp?: string) => {
+    if (!quizData) return null;
+    return {
+      answers,
+      questions: quizData.questions,
+      score,
+      passed,
+      timestamp: timestamp || new Date().toISOString()
+    };
+  };
+
+  const buildQuizReviewFromAttempt = (attempt: any) => {
+    if (!quizData) return null;
+    const normalizedAnswers = normalizeAnswers(attempt.answers);
+    const computedScore = typeof attempt.score === 'number'
+      ? attempt.score
+      : calculateQuizScore(normalizedAnswers, quizData.questions);
+    const passingScore = quizData.passing_score ?? 80;
+    const passed = typeof attempt.passed === 'boolean'
+      ? attempt.passed
+      : computedScore >= passingScore;
+    return createQuizReview(normalizedAnswers, computedScore, passed, attempt.completed_at);
+  };
+
+  const handleAttemptClick = (attempt: any, index: number) => {
+    if (!quizData) return;
+    if (selectedAttemptId === attempt.id) {
+      setSelectedAttemptId(null);
+      setSelectedAttemptLabel('');
+      setSelectedAttemptReview(null);
+      setReviewDialogOpen(false);
+      return;
+    }
+
+    const review = buildQuizReviewFromAttempt(attempt);
+    if (!review) return;
+    const timestamp = attempt.completed_at ? ` · ${new Date(attempt.completed_at).toLocaleString()}` : '';
+    setSelectedAttemptId(attempt.id);
+    setSelectedAttemptLabel(`Attempt #${index + 1}${timestamp}`);
+    setSelectedAttemptReview(review);
+    setReviewDialogOpen(true);
+  };
+
+  const renderQuizReviewSection = (review: QuizReview, label: string) => (
+    <div className="space-y-3 pt-4 mt-4 border-t">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="text-lg font-semibold">
+            {review.score}% · {review.passed ? 'Passed' : 'Needs improvement'}
+          </p>
+          {review.timestamp && (
+            <p className="text-xs text-muted-foreground">
+              {new Date(review.timestamp).toLocaleString()}
+            </p>
+          )}
+        </div>
+        <span className={`text-xs font-semibold uppercase tracking-wide ${review.passed ? 'text-emerald-600' : 'text-red-600'}`}>
+          {review.passed ? 'Passed' : 'Review'}
+        </span>
+      </div>
+      <div className="space-y-3">
+        {review.questions.map((question, index) => {
+          const selectedIndex = review.answers[question.id];
+          const isCorrect = selectedIndex === question.correctAnswer;
+          const userAnswer =
+            typeof selectedIndex === 'number' && selectedIndex >= 0 && selectedIndex < question.options.length
+              ? question.options[selectedIndex]
+              : 'Not answered';
+          return (
+            <div
+              key={question.id}
+              className={`p-3 rounded-lg border ${isCorrect ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}`}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Question {index + 1}</p>
+                <span className={`text-xs font-semibold uppercase ${isCorrect ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {isCorrect ? 'Correct' : 'Incorrect'}
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">{question.question}</p>
+              <div className="mt-2 space-y-1 text-sm">
+                <p>
+                  <span className="font-semibold">Your answer:</span>{' '}
+                  {userAnswer}
+                </p>
+                {!isCorrect && (
+                  <p>
+                    <span className="font-semibold">Correct answer:</span>{' '}
+                    {question.options[question.correctAnswer]}
+                  </p>
+                )}
+                {question.explanation && (
+                  <p className="text-xs text-muted-foreground">
+                    {question.explanation}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   const handleRetakeQuiz = () => {
+    setLastQuizReview(null);
+    setSelectedAttemptId(null);
+    setSelectedAttemptLabel('');
+    setSelectedAttemptReview(null);
     resetQuiz();
     setShowQuiz(true);
+    setReviewDialogOpen(false);
   };
 
   const toTitleCase = (value?: string | null) => {
@@ -921,51 +1169,119 @@ export default function ModuleDetail() {
             {moduleData.description}
           </p>
         </div>
+        {typeof moduleData.progress === 'number' && (
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>Course progress</span>
+              <span>{moduleData.progress}% complete</span>
+            </div>
+            <Progress value={moduleData.progress} className="h-2" />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-          {/* Module Content */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  {getCategoryIcon(moduleData.category)}
-                  <h2 className="text-xl font-semibold">Course Content</h2>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowCourseContent(prev => !prev)}
-                >
-                  {showCourseContent ? 'Hide' : 'Show'} Content
-                </Button>
-              </div>
-            </CardHeader>
-            {showCourseContent && (
-              <CardContent>
-                <ModuleViewer html={moduleData.content || ''} />
-              </CardContent>
-            )}
-          </Card>
-
           {/* Selected Lesson Content */}
           {selectedLesson && (
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-center gap-3">
                     {selectedLesson.type === "video" && <Video className="h-5 w-5 text-red-500" />}
                     {selectedLesson.type === "text" && <FileText className="h-5 w-5 text-blue-500" />}
                     {selectedLesson.type === "quiz" && <HelpCircle className="h-5 w-5 text-purple-500" />}
                     <h2 className="text-xl font-semibold">{selectedLesson.title}</h2>
                   </div>
-                  <Badge variant="outline">{selectedLesson.duration_minutes} min</Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isAdmin && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          if (isEditingLesson) {
+                            syncLessonDraftWithSelection();
+                            setIsEditingLesson(false);
+                            return;
+                          }
+                          setIsEditingLesson(true);
+                        }}
+                        disabled={savingLesson}
+                      >
+                        {isEditingLesson ? 'Cancel edits' : 'Edit lesson'}
+                      </Button>
+                    )}
+                    <Badge variant="outline">{selectedLesson.duration_minutes} min</Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 {renderLessonContent(selectedLesson)}
+
+                {isAdmin && isEditingLesson && (
+                  <div className="mt-6 space-y-4 border-t pt-4">
+                    <h3 className="text-base font-semibold">Edit lesson</h3>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Lesson title</p>
+                        <Input
+                          value={lessonDraft.title}
+                          onChange={(event) => handleLessonDraftChange('title', event.target.value)}
+                          disabled={savingLesson}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Duration (minutes)</p>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={lessonDraft.duration_minutes}
+                          onChange={(event) => handleLessonDraftChange('duration_minutes', event.target.value)}
+                          disabled={savingLesson}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Video URL</p>
+                      <Input
+                        type="url"
+                        value={lessonDraft.video_url}
+                        onChange={(event) => handleLessonDraftChange('video_url', event.target.value)}
+                        disabled={savingLesson}
+                      />
+                      <p className="text-xs text-muted-foreground">Leave blank if this lesson is text-only.</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Lesson content</p>
+                      <Textarea
+                        value={lessonDraft.text_content}
+                        onChange={(event) => handleLessonDraftChange('text_content', event.target.value)}
+                        disabled={savingLesson}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          syncLessonDraftWithSelection();
+                          setIsEditingLesson(false);
+                        }}
+                        disabled={savingLesson}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveLessonEdits}
+                        disabled={savingLesson}
+                      >
+                        {savingLesson ? 'Saving...' : 'Save changes'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t pt-4 mt-6">
                   <div className="flex flex-wrap items-center gap-2">
@@ -1003,35 +1319,79 @@ export default function ModuleDetail() {
                   <div className="space-y-4 pt-4 mt-4 border-t">
                     <h3 className="font-semibold text-lg">Quiz Attempts History</h3>
                     <div className="space-y-3">
-                      {quizAttempts.map((attempt, index) => (
-                        <div key={attempt.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-3 h-3 rounded-full ${attempt.passed ? 'bg-green-500' : 'bg-red-500'}`} />
-                            <div>
-                              <p className="font-medium">
-                                Attempt #{index + 1}
+                      {quizAttempts.map((attempt, index) => {
+                        const isSelected = selectedAttemptId === attempt.id;
+                        const attemptScore = typeof attempt.score === 'number'
+                          ? attempt.score
+                          : quizData
+                            ? calculateQuizScore(normalizeAnswers(attempt.answers), quizData.questions)
+                            : 0;
+
+                        return (
+                          <div
+                            key={attempt.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => handleAttemptClick(attempt, index)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                handleAttemptClick(attempt, index);
+                              }
+                            }}
+                            className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${isSelected ? 'bg-primary/10 border-primary/30' : 'bg-gray-50 border-transparent hover:bg-gray-100'}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-3 h-3 rounded-full ${attempt.passed ? 'bg-green-500' : 'bg-red-500'}`} />
+                              <div>
+                                <p className="font-medium">
+                                  Attempt #{index + 1}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {new Date(attempt.completed_at).toLocaleDateString()} at {new Date(attempt.completed_at).toLocaleTimeString()}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Click to review answers
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className={`font-semibold ${attempt.passed ? 'text-green-600' : 'text-red-600'}`}>
+                                {attemptScore}%
                               </p>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(attempt.completed_at).toLocaleDateString()} at {new Date(attempt.completed_at).toLocaleTimeString()}
+                              <p className="text-xs text-muted-foreground">
+                                {attempt.passed ? 'Passed' : 'Failed'}
                               </p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className={`font-semibold ${attempt.passed ? 'text-green-600' : 'text-red-600'}`}>
-                              {attempt.score}%
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {attempt.passed ? 'Passed' : 'Failed'}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
+                    {selectedAttemptReview && renderQuizReviewSection(selectedAttemptReview, selectedAttemptLabel || 'Attempt review')}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          )}
+          {selectedLesson?.quiz_id && lastQuizReview && renderQuizReviewSection(lastQuizReview, 'Latest quiz review')}
+        </CardContent>
+      </Card>
+    )}
+
+      {selectedAttemptReview && (
+        <Dialog open={reviewDialogOpen} onOpenChange={(open) => setReviewDialogOpen(open)}>
+        <DialogContent className="max-w-3xl bg-background fixed bottom-6 left-1/2 -translate-x-1/2 rounded-2xl shadow-2xl w-full md:w-[820px] max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">
+              {selectedAttemptLabel || 'Quiz attempt review'}
+            </DialogTitle>
+            <DialogDescription>
+              Review every answer and highlight the ones you missed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[82vh] overflow-y-auto pr-2">
+            {renderQuizReviewSection(selectedAttemptReview, selectedAttemptLabel || 'Attempt review')}
+          </div>
+        </DialogContent>
+        </Dialog>
+      )}
           
 
           {/* Welcome Message - Show when no lesson is selected */}
