@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import FileUploader from '@/components/FileUploader'
-import { Plus, X, Video, FileText, HelpCircle } from 'lucide-react'
+import { Plus, X, Video, FileText, HelpCircle, Edit } from 'lucide-react'
+import { supabase } from '@/integrations/supabase/client'
 
 const loadReactQuill = () => import('react-quill')
 
@@ -39,23 +40,38 @@ interface LessonCreatorProps {
   quizzes?: Quiz[]
 }
 
+const createEmptyLessonTemplate = (orderIndex: number): Lesson => ({
+  id: '',
+  title: '',
+  type: 'text',
+  duration_minutes: 5,
+  order_index: orderIndex
+})
+
 export default function LessonCreator({ onLessonsChange, initialLessons = [], quizzes = [] }: LessonCreatorProps) {
   const [lessons, setLessons] = useState<Lesson[]>(initialLessons)
   const [showForm, setShowForm] = useState(false)
   const [uploadedVideo, setUploadedVideo] = useState<any>(null)
   const [QuillEditor, setQuillEditor] = useState<any>(null)
-  const [currentLesson, setCurrentLesson] = useState<Lesson>({
-    id: '',
-    title: '',
-    type: 'text',
-    duration_minutes: 5,
-    order_index: lessons.length + 1
-  })
+  const [currentLesson, setCurrentLesson] = useState<Lesson>(createEmptyLessonTemplate(initialLessons.length + 1))
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
+  const [savingLesson, setSavingLesson] = useState(false)
+  const [lessonSaveError, setLessonSaveError] = useState<string | null>(null)
+  const formRef = useRef<HTMLDivElement>(null)
 
   // Sync internal state with initialLessons prop
+  const resetLessonFormState = (orderIndex: number) => {
+    setCurrentLesson(createEmptyLessonTemplate(orderIndex))
+    setUploadedVideo(null)
+    setEditingLessonId(null)
+    setLessonSaveError(null)
+  }
+
   useEffect(() => {
     console.log('LessonCreator: initialLessons changed:', initialLessons)
     setLessons(initialLessons)
+    resetLessonFormState(initialLessons.length + 1)
+    setShowForm(false)
   }, [initialLessons])
 
   useEffect(() => {
@@ -106,29 +122,104 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [], qu
     }
   }
 
-  const handleAddLesson = () => {
-    if (!currentLesson.title.trim()) return
+  const handleOpenNewLessonForm = () => {
+    resetLessonFormState(lessons.length + 1)
+    setShowForm(true)
+  }
 
-    const newLesson: Lesson = {
-      ...currentLesson,
-      id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  const handleEditLesson = (lesson: Lesson) => {
+    setCurrentLesson({ ...lesson })
+    if (lesson.type === 'video' && lesson.video_url) {
+      setUploadedVideo({
+        url: lesson.video_url,
+        file: {
+          name: lesson.file_name || 'Uploaded video',
+          size: lesson.file_size || 0,
+          type: lesson.file_type || 'video/mp4'
+        }
+      })
+    } else {
+      setUploadedVideo(null)
     }
 
-    const updatedLessons = [...lessons, newLesson].sort((a, b) => a.order_index - b.order_index)
-    setLessons(updatedLessons)
-    onLessonsChange(updatedLessons)
+    setEditingLessonId(lesson.id)
+    setShowForm(true)
+  }
 
-    // Reset form
-    setCurrentLesson({
-      id: '',
-      title: '',
-      type: 'text',
-      duration_minutes: 5,
-      order_index: updatedLessons.length + 1
-    })
-    setUploadedVideo(null)
+  const handleSaveLesson = async () => {
+    if (!currentLesson.title.trim()) return
+
+    setSavingLesson(true)
+    setLessonSaveError(null)
+    const existingLesson = lessons.find(l => l.id === editingLessonId)
+    let updatedLessons: Lesson[]
+
+    try {
+      if (editingLessonId && !editingLessonId.startsWith('temp-')) {
+        const { error } = await supabase
+          .from('lessons')
+          .update({
+            title: currentLesson.title,
+            type: currentLesson.type,
+            duration_minutes: currentLesson.duration_minutes,
+            video_url: currentLesson.video_url || null,
+            text_content: currentLesson.text_content || null,
+            quiz_id: currentLesson.quiz_id || null,
+            file_url: currentLesson.file_url || null,
+            file_name: currentLesson.file_name || null,
+            file_size: currentLesson.file_size ?? null,
+            file_type: currentLesson.file_type || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingLessonId)
+
+        if (error) {
+          throw error
+        }
+      }
+
+      if (editingLessonId && existingLesson) {
+        const lessonToSave = {
+          ...existingLesson,
+          ...currentLesson,
+          order_index: existingLesson.order_index ?? currentLesson.order_index
+        }
+        updatedLessons = lessons.map(l => l.id === editingLessonId ? lessonToSave : l)
+      } else {
+        const newLesson: Lesson = {
+          ...currentLesson,
+          id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          order_index: lessons.length + 1
+        }
+        updatedLessons = [...lessons, newLesson]
+      }
+
+      const sortedLessons = [...updatedLessons].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+      setLessons(sortedLessons)
+      onLessonsChange(sortedLessons)
+
+      resetLessonFormState(sortedLessons.length + 1)
+      setShowForm(false)
+    } catch (error) {
+      console.error('Error saving lesson:', error)
+      setLessonSaveError('Failed to save lesson edits. Please try again later.')
+    } finally {
+      setSavingLesson(false)
+    }
+  }
+
+  const handleCloseLessonForm = () => {
+    resetLessonFormState(lessons.length + 1)
     setShowForm(false)
   }
+
+  useEffect(() => {
+    if (showForm && formRef.current) {
+      window.requestAnimationFrame(() => {
+        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+  }, [showForm, editingLessonId])
 
   const handleRemoveLesson = (lessonId: string) => {
     const updatedLessons = lessons.filter(l => l.id !== lessonId)
@@ -153,7 +244,7 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [], qu
             Add individual lessons to your module. You can assign quizzes to any lesson for assessment.
           </p>
         </div>
-        <Button type="button" onClick={() => setShowForm(true)} size="sm">
+        <Button type="button" onClick={handleOpenNewLessonForm} size="sm">
           <Plus className="h-4 w-4 mr-2" />
           Add Lesson
         </Button>
@@ -161,13 +252,14 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [], qu
 
       {/* Add Lesson Form */}
       {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Add New Lesson</CardTitle>
-            <CardDescription>
-              Create a lesson for your module
-            </CardDescription>
-          </CardHeader>
+        <div ref={formRef}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">{editingLessonId ? 'Edit Lesson' : 'Add New Lesson'}</CardTitle>
+              <CardDescription>
+                {editingLessonId ? 'Update the lesson details for this module' : 'Create a lesson for your module'}
+              </CardDescription>
+            </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -294,19 +386,24 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [], qu
             )}
 
             <div className="flex gap-3">
-              <Button type="button" onClick={handleAddLesson} disabled={!currentLesson.title.trim()}>
-                Add Lesson
+              <Button type="button" onClick={handleSaveLesson} disabled={savingLesson || !currentLesson.title.trim()}>
+                {savingLesson ? 'Saving...' : editingLessonId ? 'Save Lesson' : 'Add Lesson'}
               </Button>
               <Button 
                 type="button"
                 variant="outline" 
-                onClick={() => setShowForm(false)}
+                onClick={handleCloseLessonForm}
+                disabled={savingLesson}
               >
                 Cancel
               </Button>
             </div>
+            {lessonSaveError && (
+              <p className="text-xs text-red-600">{lessonSaveError}</p>
+            )}
           </CardContent>
         </Card>
+        </div>
       )}
 
       {/* Lessons List */}
@@ -355,14 +452,26 @@ export default function LessonCreator({ onLessonsChange, initialLessons = [], qu
                         )}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveLesson(lesson.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditLesson(lesson)}
+                        className="text-indigo-600 hover:text-indigo-700"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveLesson(lesson.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

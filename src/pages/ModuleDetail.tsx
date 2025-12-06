@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -159,6 +159,7 @@ export default function ModuleDetail() {
   const [selectedAttemptLabel, setSelectedAttemptLabel] = useState<string>('');
   const [selectedAttemptReview, setSelectedAttemptReview] = useState<QuizReview | null>(null);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const lessonContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (id) {
@@ -193,6 +194,174 @@ export default function ModuleDetail() {
       return {};
     }
   };
+
+  const updateModuleProgress = useCallback(async (extraCompletedLessonId?: string) => {
+    if (!user || !moduleData) return;
+    const moduleId = moduleData.id;
+
+    try {
+      const quizLessons = lessons.filter(lesson => lesson.quiz_id);
+      const hasQuizzes = quizLessons.length > 0;
+      let progressPercentage = 0;
+      let completedCount = 0;
+      let totalLessons = lessons.length;
+
+      if (hasQuizzes) {
+        const uniqueQuizIds = Array.from(new Set(quizLessons.map(lesson => lesson.quiz_id).filter(Boolean)));
+        totalLessons = uniqueQuizIds.length;
+
+        if (totalLessons === 0) {
+          progressPercentage = 0;
+        } else {
+          const { data: attemptsData, error: attemptsError } = await supabase
+            .from('quiz_attempts')
+            .select('quiz_id, passed')
+            .eq('user_id', user.id)
+            .eq('module_id', moduleId)
+            .in('quiz_id', uniqueQuizIds)
+            .order('completed_at', { ascending: false });
+
+          if (attemptsError) {
+            throw attemptsError;
+          }
+
+          const passedQuizIds = new Set(
+            (attemptsData || [])
+              .filter((entry: any) => entry.passed)
+              .map((entry: any) => entry.quiz_id)
+          );
+
+          if (extraCompletedLessonId) {
+            const lesson = lessons.find(l => l.id === extraCompletedLessonId && l.quiz_id);
+            if (lesson?.quiz_id) {
+              passedQuizIds.add(lesson.quiz_id);
+            }
+          }
+
+          completedCount = passedQuizIds.size;
+          progressPercentage = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+        }
+      } else {
+        const { data: completedLessonsData, error: completedLessonsError } = await supabase
+          .from('user_lesson_progress')
+          .select('lesson_id')
+          .eq('user_id', user.id)
+          .eq('module_id', moduleId)
+          .eq('is_completed', true);
+
+        if (completedLessonsError) {
+          throw completedLessonsError;
+        }
+
+        completedCount = completedLessonsData?.length || 0;
+
+        if (extraCompletedLessonId) {
+          const alreadyCounted = completedLessonsData?.some(entry => entry.lesson_id === extraCompletedLessonId);
+          if (!alreadyCounted) {
+            completedCount = Math.min(totalLessons, completedCount + 1);
+          }
+        }
+
+        progressPercentage = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+      }
+
+      let status: 'not-started' | 'in-progress' | 'completed' = 'not-started';
+      if (progressPercentage > 0 && progressPercentage < 100) {
+        status = 'in-progress';
+      } else if (progressPercentage === 100 && totalLessons > 0) {
+        status = 'completed';
+      }
+
+      const { error: moduleProgressError } = await supabase
+        .from('user_module_progress')
+        .upsert({
+          user_id: user.id,
+          module_id: moduleId,
+          progress: progressPercentage,
+          status: status,
+          completed_at: status === 'completed' ? new Date().toISOString() : null
+        }, {
+          onConflict: 'user_id,module_id'
+        });
+
+      if (moduleProgressError) throw moduleProgressError;
+
+      console.log(`Module progress updated: ${progressPercentage}% (${completedCount}/${totalLessons} lessons)`);
+
+      setModuleData(prev => prev ? {
+        ...prev,
+        progress: progressPercentage,
+        status
+      } : prev);
+
+      const eventDetail = {
+        moduleId: moduleData.id,
+        progress: progressPercentage,
+        status
+      };
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('module-progress-updated', { detail: eventDetail }));
+      }
+    } catch (error) {
+      console.error('Error updating module progress:', error);
+    }
+  }, [user, moduleData, lessons]);
+
+  const markLessonAsCompletedAfterScroll = useCallback(async (lesson: LessonData) => {
+    if (!user || !moduleData || lessonProgress[lesson.id] || lesson.quiz_id) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_lesson_progress')
+        .upsert({
+          user_id: user.id,
+          module_id: moduleData.id,
+          lesson_id: lesson.id,
+          is_completed: true,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,lesson_id'
+        });
+
+      if (error) throw error;
+
+      setLessonCompleted(true);
+      setLessonProgress(prev => ({
+        ...prev,
+        [lesson.id]: true
+      }));
+
+      await updateModuleProgress(lesson.id);
+    } catch (error) {
+      console.error('Error marking lesson as completed after scroll:', error);
+    }
+  }, [user, moduleData, lessonProgress, updateModuleProgress]);
+
+  useEffect(() => {
+    if (!selectedLesson || selectedLesson.quiz_id || lessonCompleted) return;
+
+    const checkIfAtBottom = () => {
+      const contentElement = lessonContentRef.current;
+      if (!contentElement) return;
+
+      const rect = contentElement.getBoundingClientRect();
+      const threshold = 24;
+      if (rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) + threshold) {
+        markLessonAsCompletedAfterScroll(selectedLesson);
+      }
+    };
+
+    checkIfAtBottom();
+    window.addEventListener('scroll', checkIfAtBottom, { passive: true });
+    window.addEventListener('resize', checkIfAtBottom);
+
+    return () => {
+      window.removeEventListener('scroll', checkIfAtBottom);
+      window.removeEventListener('resize', checkIfAtBottom);
+    };
+  }, [selectedLesson, lessonCompleted, markLessonAsCompletedAfterScroll]);
 
   const handleLessonDraftChange = (field: keyof LessonDraft, value: string) => {
     const nextValue = field === 'duration_minutes' ? Number(value) || 0 : value;
@@ -305,11 +474,6 @@ export default function ModuleDetail() {
         }
       }
 
-      // Load user module progress to show personalized status/progress
-      if (user) {
-        await loadUserModuleProgress(module.id);
-      }
-
     } catch (error) {
       console.error('Error loading module:', error);
       setError('Failed to load module');
@@ -320,33 +484,6 @@ export default function ModuleDetail() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadUserModuleProgress = async (moduleId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_module_progress')
-        .select('status, progress, quiz_score, completed_at')
-        .eq('user_id', user?.id)
-        .eq('module_id', moduleId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        // PGRST116 = no rows; ignore
-        throw error;
-      }
-
-      if (data) {
-        setModuleData(prev => prev ? {
-          ...prev,
-          status: data.status || prev.status,
-          progress: data.progress ?? prev.progress ?? 0,
-          quiz_score: data.quiz_score ?? prev.quiz_score
-        } : prev);
-      }
-    } catch (err) {
-      console.error('Error loading user module progress:', err);
     }
   };
 
@@ -548,70 +685,11 @@ export default function ModuleDetail() {
     loadLessonQuiz(selectedLesson.quiz_id);
   }, [selectedLesson, lessonProgress]);
 
-  const updateModuleProgress = async (extraCompletedLessonId?: string) => {
-    if (!user || !moduleData) return;
-
-    try {
-      // Count completed lessons using local progress map (freshest) with DB fallback
-      let completedCount = lessons.filter(l => lessonProgress[l.id] || l.id === extraCompletedLessonId).length;
-      if (completedCount === 0) {
-        const result = await supabase
-          .from('user_lesson_progress')
-          .select('lesson_id')
-          .eq('user_id', user.id)
-          .eq('module_id', moduleData.id)
-          .eq('is_completed', true);
-
-        if (result.error) throw result.error;
-        completedCount = result.data?.length || 0;
-      }
-
-      const totalLessons = lessons.length;
-      const progressPercentage = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
-
-      // Determine module status
-      let status: 'not-started' | 'in-progress' | 'completed' = 'not-started';
-      if (completedCount > 0 && completedCount < totalLessons) {
-        status = 'in-progress';
-      } else if (completedCount === totalLessons && totalLessons > 0) {
-        status = 'completed';
-      }
-
-      // Update or create module progress record
-      const { error: moduleProgressError } = await supabase
-        .from('user_module_progress')
-        .upsert({
-          user_id: user.id,
-          module_id: moduleData.id,
-          progress: progressPercentage,
-          status: status,
-          completed_at: status === 'completed' ? new Date().toISOString() : null
-        });
-
-      if (moduleProgressError) throw moduleProgressError;
-
-      console.log(`Module progress updated: ${progressPercentage}% (${completedCount}/${totalLessons} lessons)`);
-
-      // Reflect updated progress/status locally for immediate UI feedback
-      setModuleData(prev => prev ? {
-        ...prev,
-        progress: progressPercentage,
-        status
-      } : prev);
-
-      const eventDetail = {
-        moduleId: moduleData.id,
-        progress: progressPercentage,
-        status
-      };
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('module-progress-updated', { detail: eventDetail }));
-      }
-    } catch (error) {
-      console.error('Error updating module progress:', error);
+  useEffect(() => {
+    if (user && moduleData && lessons.length > 0) {
+      updateModuleProgress();
     }
-  };
+  }, [user, moduleData, lessons, updateModuleProgress]);
 
   const handleQuizComplete = async (score: number, passed: boolean) => {
     if (!selectedLesson || !user) return;
@@ -1217,7 +1295,9 @@ export default function ModuleDetail() {
                 </div>
               </CardHeader>
               <CardContent>
-                {renderLessonContent(selectedLesson)}
+                <div ref={lessonContentRef} className="space-y-4">
+                  {renderLessonContent(selectedLesson)}
+                </div>
 
                 {isAdmin && isEditingLesson && (
                   <div className="mt-6 space-y-4 border-t pt-4">
