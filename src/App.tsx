@@ -36,8 +36,8 @@ const AppContent = () => {
         <div className="text-center space-y-4">
           <LoadingSpinner size="lg" />
           <div className="space-y-2">
-            <h2 className="text-xl font-semibold text-foreground">FinGuide</h2>
-            <p className="text-sm text-muted-foreground">Initializing your financial learning platform...</p>
+            <h2 className="text-xl font-semibold text-foreground">MigFin</h2>
+            <p className="text-sm text-muted-foreground">Initializing your MigFin learning platform...</p>
           </div>
         </div>
       </div>

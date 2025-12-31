@@ -1,11 +1,11 @@
 export const APP_CONFIG = {
-    name: "FinGuide SG",
-    shortName: "FinGuide",
-    description: "Empowering Migrant Workers in Singapore with Financial Knowledge",
+    name: "MigFin: Financial Literacy for Migrant Workers",
+    shortName: "MigFin",
+    description: "Empowering migrant workers with financial knowledge and safe remittance tools",
     tagline: "Learn, Save, and Send Money Safely",
     version: "1.0.0",
-    author: "FinGuide Team",
-    url: "https://finguide.sg",
+    author: "MigFin Team",
+    url: "https://migfin.org",
 
     // Brand colors
     colors: {

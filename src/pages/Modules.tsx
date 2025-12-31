@@ -69,6 +69,7 @@ interface Module {
   lessons: Lesson[];
   price: "Free" | "Premium";
   thumbnail: string;
+  thumbnailUrl?: string | null;
   whatYoullLearn: string[];
   prerequisites: string[];
   quizScore?: number;
@@ -830,21 +831,29 @@ export default function Modules() {
         {filteredModules.map((module) => (
           <Card key={module.id} className="hover:shadow-lg transition-shadow group">
             <div className="relative">
-              <div className="aspect-video bg-gradient-to-br from-primary/20 to-secondary/20 rounded-t-lg flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary mb-2">{module.thumbnail}</div>
-                  <div className="text-sm text-muted-foreground">Course Content</div>
-                </div>
+              <div className="aspect-video bg-gradient-to-br from-primary/20 to-secondary/20 rounded-t-lg flex items-center justify-center overflow-hidden">
+                {module.thumbnailUrl ? (
+                  <img
+                    src={module.thumbnailUrl}
+                    alt={`${module.title} thumbnail`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-primary mb-2">{module.thumbnail}</div>
+                    <div className="text-sm text-muted-foreground">Course Content</div>
                   </div>
+                )}
+              </div>
               <div className="absolute top-3 right-3">
-                    <Badge className={categoryColors[module.category]}>
-                      {module.category}
-                    </Badge>
+                <Badge className={categoryColors[module.category]}>
+                  {module.category}
+                </Badge>
               </div>
               <div className="absolute top-3 left-3">
                 {statusIcons[module.status]}
-                    </div>
-                  </div>
+              </div>
+            </div>
 
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between mb-2">

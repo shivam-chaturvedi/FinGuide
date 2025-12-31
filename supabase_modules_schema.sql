@@ -1,5 +1,5 @@
 -- =============================================
--- FinGuide Modules Database Schema
+-- MigFin Modules Database Schema
 -- =============================================
 
 -- Enable necessary extensions

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, ChangeEvent } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Button } from '@/components/ui/button'
@@ -13,9 +13,9 @@ import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
-import { 
-  Upload, 
-  FileText, 
+import {
+  Upload,
+  FileText,
   Plus,
   Edit,
   Trash2,
@@ -43,6 +43,8 @@ interface Module {
   file_size: number | null
   file_type: string | null
   quiz_id: string | null
+  thumbnail: string | null
+  thumbnail_url: string | null
   is_published: boolean
   created_at: string
   updated_at: string
@@ -70,6 +72,7 @@ export default function AdminDashboard() {
     rating: 4.0,
     price: 'Free' as 'Free' | 'Premium',
     thumbnail: '',
+    thumbnail_url: '',
     what_youll_learn: [] as string[],
     prerequisites: [] as string[],
     quiz_id: 'none',
@@ -78,6 +81,7 @@ export default function AdminDashboard() {
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([])
   const [manualLessons, setManualLessons] = useState<any[]>([])
   const [uploading, setUploading] = useState(false)
+  const [thumbnailUploading, setThumbnailUploading] = useState(false)
   const [editingModule, setEditingModule] = useState<Module | null>(null)
   const [existingLessons, setExistingLessons] = useState<any[]>([])
   const [QuillEditor, setQuillEditor] = useState<any>(null)
@@ -161,7 +165,7 @@ export default function AdminDashboard() {
         console.error('Error loading lessons:', error)
         throw error
       }
-      
+
       console.log('Loaded lessons:', data)
       setExistingLessons(data || [])
       return data || []
@@ -184,10 +188,56 @@ export default function AdminDashboard() {
     setManualLessons(lessons)
   }
 
+  const uploadThumbnailImage = async (file: File) => {
+    const fileExt = file.name.split('.').pop() || 'jpg'
+    const fileName = `thumbnails/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+
+    const { error } = await supabase.storage
+      .from('module-thumbnails')
+      .upload(fileName, file, { upsert: true })
+
+    if (error) throw error
+
+    const { data } = supabase.storage
+      .from('module-thumbnails')
+      .getPublicUrl(fileName)
+
+    return data.publicUrl
+  }
+
+  const handleThumbnailFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setThumbnailUploading(true)
+    try {
+      const publicUrl = await uploadThumbnailImage(file)
+      setModuleForm(prev => ({ ...prev, thumbnail_url: publicUrl }))
+      toast({
+        title: "Thumbnail uploaded",
+        description: "Module thumbnail image is ready."
+      })
+    } catch (error) {
+      console.error('Thumbnail upload failed:', error)
+      toast({
+        title: "Upload failed",
+        description: "Could not upload the thumbnail image.",
+        variant: "destructive"
+      })
+    } finally {
+      setThumbnailUploading(false)
+      event.target.value = ''
+    }
+  }
+
+  const handleClearThumbnail = () => {
+    setModuleForm(prev => ({ ...prev, thumbnail_url: '' }))
+  }
+
   const handleEditModule = async (module: Module) => {
     setEditingModule(module)
     setActiveTab('upload')
-    
+
     // Populate form with existing module data
     setModuleForm({
       title: module.title,
@@ -200,7 +250,8 @@ export default function AdminDashboard() {
       duration_weeks: 1, // Default value since this might not exist in old modules
       rating: 4.0, // Default value
       price: 'Free' as 'Free' | 'Premium', // Default value
-      thumbnail: '',
+      thumbnail: module.thumbnail || '',
+      thumbnail_url: module.thumbnail_url || '',
       what_youll_learn: [],
       prerequisites: [],
       quiz_id: module.quiz_id || 'none',
@@ -209,7 +260,7 @@ export default function AdminDashboard() {
 
     // Load existing lessons for this module
     const lessons = await loadModuleLessons(module.id)
-    
+
     // Convert existing lessons to manual lessons format
     const formattedLessons = lessons.map(lesson => ({
       id: lesson.id,
@@ -221,7 +272,7 @@ export default function AdminDashboard() {
       quiz_id: (lesson as any).quiz_id,
       order_index: lesson.order_index
     }))
-    
+
     console.log('Formatted lessons for editing:', formattedLessons)
     setManualLessons(formattedLessons)
   }
@@ -243,6 +294,7 @@ export default function AdminDashboard() {
       rating: 4.0,
       price: 'Free',
       thumbnail: '',
+      thumbnail_url: '',
       what_youll_learn: [],
       prerequisites: [],
       quiz_id: 'none',
@@ -287,6 +339,7 @@ export default function AdminDashboard() {
 
       const moduleData = {
         ...moduleForm,
+        thumbnail_url: moduleForm.thumbnail_url || null,
         quiz_id: moduleForm.quiz_id === 'none' ? null : moduleForm.quiz_id,
         file_url: fileData?.file_url || null,
         file_name: fileData?.file_name || null,
@@ -340,14 +393,14 @@ export default function AdminDashboard() {
         const fileLessons = uploadedFiles.map((fileObj, index) => ({
           module_id: moduleId,
           title: fileObj.file.name,
-          type: fileObj.file.type.startsWith('video/') ? 'video' : 
-                fileObj.file.type.startsWith('image/') ? 'text' : 'text',
+          type: fileObj.file.type.startsWith('video/') ? 'video' :
+            fileObj.file.type.startsWith('image/') ? 'text' : 'text',
           duration_minutes: 5, // Default duration
           video_url: fileObj.file.type.startsWith('video/') ? fileObj.url : null,
-          text_content: fileObj.file.type.startsWith('image/') ? 
-            `Image: ${fileObj.file.name}` : 
-            fileObj.file.type === 'application/pdf' ? 
-              `PDF Document: ${fileObj.file.name}` : 
+          text_content: fileObj.file.type.startsWith('image/') ?
+            `Image: ${fileObj.file.name}` :
+            fileObj.file.type === 'application/pdf' ?
+              `PDF Document: ${fileObj.file.name}` :
               `Document: ${fileObj.file.name}`,
           file_url: fileObj.url,
           file_name: fileObj.file.name,
@@ -374,7 +427,7 @@ export default function AdminDashboard() {
 
         console.log('Inserting lessons:', allLessons)
         const { error: lessonsError } = await supabase.from('lessons').insert(allLessons)
-        
+
         if (lessonsError) {
           console.error('Error inserting lessons:', lessonsError)
           throw new Error(`Failed to create lessons: ${lessonsError.message}`)
@@ -614,7 +667,7 @@ export default function AdminDashboard() {
                           <div className="flex-1 min-w-0">
                             <h3 className="text-lg font-semibold dark:text-white truncate">{module.title}</h3>
                             <p className="text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">{module.description}</p>
-                            
+
                             <div className="flex flex-wrap items-center gap-2 mt-3">
                               <Badge variant={module.is_published ? "default" : "secondary"} className="text-xs">
                                 {module.is_published ? "Published" : "Draft"}
@@ -834,13 +887,46 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="thumbnail">Thumbnail Text</Label>
+                      <Label htmlFor="thumbnail">Thumbnail Label (text fallback)</Label>
                       <Input
                         id="thumbnail"
                         value={moduleForm.thumbnail}
                         onChange={(e) => setModuleForm({ ...moduleForm, thumbnail: e.target.value })}
                         placeholder="e.g., Financial Basics"
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="thumbnail-image">Thumbnail Image</Label>
+                      <input
+                        id="thumbnail-image"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleThumbnailFileChange}
+                        disabled={thumbnailUploading}
+                        className="block w-full text-sm text-foreground rounded border border-input bg-background/50 px-3 py-2"
+                      />
+                      {thumbnailUploading && (
+                        <p className="text-xs text-muted-foreground">Uploading thumbnail...</p>
+                      )}
+                      {!thumbnailUploading && !moduleForm.thumbnail_url && (
+                        <p className="text-xs text-muted-foreground">
+                          Supported formats: JPG, PNG.
+                        </p>
+                      )}
+                      {moduleForm.thumbnail_url && (
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={moduleForm.thumbnail_url}
+                            alt="Module thumbnail preview"
+                            className="h-16 w-16 rounded-md border border-border object-cover"
+                          />
+                          <div className="text-sm text-muted-foreground">Current thumbnail</div>
+                          <Button variant="outline" size="sm" onClick={handleClearThumbnail}>
+                            Clear
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -907,8 +993,8 @@ export default function AdminDashboard() {
                     <Textarea
                       id="what_youll_learn"
                       value={moduleForm.what_youll_learn.join('\n')}
-                      onChange={(e) => setModuleForm({ 
-                        ...moduleForm, 
+                      onChange={(e) => setModuleForm({
+                        ...moduleForm,
                         what_youll_learn: e.target.value.split('\n').filter(item => item.trim() !== '')
                       })}
                       placeholder="Understand Singapore's financial system&#10;Create and maintain a personal budget&#10;Learn about banking and savings accounts"
@@ -921,8 +1007,8 @@ export default function AdminDashboard() {
                     <Textarea
                       id="prerequisites"
                       value={moduleForm.prerequisites.join('\n')}
-                      onChange={(e) => setModuleForm({ 
-                        ...moduleForm, 
+                      onChange={(e) => setModuleForm({
+                        ...moduleForm,
                         prerequisites: e.target.value.split('\n').filter(item => item.trim() !== '')
                       })}
                       placeholder="Basic English&#10;Singapore work permit"
@@ -948,7 +1034,7 @@ export default function AdminDashboard() {
                       maxSize={100} // 100MB
                     />
                     <p className="text-xs text-muted-foreground">
-                      Upload videos, images, PDFs, documents, and other educational materials. 
+                      Upload videos, images, PDFs, documents, and other educational materials.
                       Each file will become a lesson in your module.
                     </p>
                   </div>

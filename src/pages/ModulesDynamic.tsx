@@ -65,6 +65,7 @@ interface Module {
   status: 'completed' | 'in-progress' | 'locked' | 'not-started';
   price: string;
   thumbnail: string;
+  thumbnailUrl?: string | null;
   whatYoullLearn: string[];
   prerequisites: string[];
   quizScore?: number;
@@ -174,6 +175,7 @@ export default function ModulesDynamic() {
         status: 'not-started' as const, // Will be updated with user progress
         price: module.price || 'Free',
         thumbnail: module.thumbnail || module.title.substring(0, 2).toUpperCase(),
+        thumbnailUrl: module.thumbnail_url || null,
         whatYoullLearn: module.what_youll_learn || [],
         prerequisites: module.prerequisites || [],
         quizScore: undefined, // Will be updated with user progress
@@ -1121,12 +1123,20 @@ export default function ModulesDynamic() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredModules.map((module) => (
-            <Card key={module.id} className="group hover:shadow-lg transition-shadow">
-              <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 rounded-t-lg flex items-center justify-center">
+          <Card key={module.id} className="group hover:shadow-lg transition-shadow">
+            <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 rounded-t-lg flex items-center justify-center overflow-hidden">
+              {module.thumbnailUrl ? (
+                <img
+                  src={module.thumbnailUrl}
+                  alt={`${module.title} thumbnail`}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
                 <div className="text-4xl font-bold text-primary">
                   {module.thumbnail}
                 </div>
-              </div>
+              )}
+            </div>
 
               <CardContent className="p-6">
                 <div className="flex items-center gap-2 mb-2">

@@ -49,7 +49,7 @@ export const themes = [
   },
   {
     id: 'default' as Theme,
-    name: 'FinGuide Blue',
+    name: 'MigFin Blue',
     description: 'Trust & Reliability',
     colors: ['#1e40af', '#059669', '#3b82f6']
   }
@@ -57,12 +57,12 @@ export const themes = [
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem('finguide-theme');
+    const saved = localStorage.getItem('migfin-theme');
     return (saved as Theme) || 'creative-growth';
   });
 
   useEffect(() => {
-    localStorage.setItem('finguide-theme', theme);
+    localStorage.setItem('migfin-theme', theme);
     
     // Remove all theme classes
     const root = document.documentElement;

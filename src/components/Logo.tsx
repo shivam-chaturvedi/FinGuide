@@ -53,13 +53,12 @@ export function Logo({ size = "md", showText = true, className = "" }: LogoProps
       </div>
       {showText && (
         <span className={`font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent ${textSizes[size]}`}>
-          FinGuide
+          MigFin
         </span>
       )}
     </div>
   );
 }
-
 
 
 

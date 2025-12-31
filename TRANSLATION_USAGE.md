@@ -94,7 +94,7 @@ All translation keys are defined in `src/contexts/LanguageContext.tsx` under `en
 
 ```typescript
 // App branding
-'app.name' // FinGuide SG
+'app.name' // MigFin: Financial Literacy for Migrant Workers
 'app.description' // Empowering Migrant Workers...
 'app.tagline' // Learn, Save, and Send Money Safely
 
@@ -166,4 +166,3 @@ return <h1>{t('app.name')}</h1>;
 ```tsx
 return <h1><TranslatedText translationKey="app.name" /></h1>;
 ```
-

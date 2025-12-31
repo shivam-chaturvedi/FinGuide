@@ -32,7 +32,7 @@ const ModuleViewer = ({ html, className = '' }: { html: string; className?: stri
   const safeHtml = DOMPurify.sanitize(html || '');
   return (
     <div
-      className={`prose prose-base sm:prose-lg lg:prose-xl max-w-none ${className}`}
+      className={`prose prose-base sm:prose-lg lg:prose-xl max-w-none ${className} text-foreground`}
       dangerouslySetInnerHTML={{ __html: safeHtml }}
     />
   );
@@ -86,7 +86,7 @@ interface ModuleData {
   prerequisites: string[];
   quiz_score: number;
   video_url: string;
-  thumbnail_url: string;
+  thumbnail_url: string | null;
   quiz_id: string;
 }
 
@@ -1246,6 +1246,15 @@ export default function ModuleDetail() {
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
             {moduleData.description}
           </p>
+          {moduleData.thumbnail_url && (
+            <div className="overflow-hidden rounded-2xl border border-border">
+              <img
+                src={moduleData.thumbnail_url}
+                alt={`${moduleData.title} thumbnail`}
+                className="h-56 w-full object-cover"
+              />
+            </div>
+          )}
         </div>
         {typeof moduleData.progress === 'number' && (
           <div className="space-y-2 pt-2">

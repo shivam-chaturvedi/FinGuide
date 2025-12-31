@@ -15,8 +15,8 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 // English fallback texts (source language)
 const englishTexts = {
   // App branding
-  'app.name': 'FinGuide SG',
-  'app.description': 'Empowering Migrant Workers in Singapore with Financial Knowledge',
+  'app.name': 'MigFin: Financial Literacy for Migrant Workers',
+  'app.description': 'Empowering migrant workers with practical financial knowledge and safety tools',
   'app.tagline': 'Learn, Save, and Send Money Safely',
   'app.targetAudience': 'Migrant Workers in Singapore',
   
@@ -31,9 +31,9 @@ const englishTexts = {
   'nav.explore': 'Explore as Guest',
   
   // Hero Section
-  'hero.title': 'FinGuide SG',
-  'hero.subtitle': 'Empowering Migrant Workers in Singapore with Financial Knowledge',
-  'hero.description': 'Learn, Save, and Send Money Safely. Built specifically for Migrant Workers in Singapore.',
+  'hero.title': 'MigFin',
+  'hero.subtitle': 'Empowering migrant workers with practical financial education',
+  'hero.description': 'Learn, Save, and Send Money Safely. Expert tutorials for migrant workers wherever you are.',
   'hero.signup': 'Sign Up Free',
   'hero.login': 'Login',
   'hero.explore': 'Explore as Guest',
@@ -42,7 +42,7 @@ const englishTexts = {
   
   // About Section
   'about.title': 'Why this App?',
-  'about.subtitle': 'Discover how FinGuide SG transforms financial literacy for Migrant Workers in Singapore',
+  'about.subtitle': 'Discover how MigFin transforms financial literacy for migrant workers',
   'about.feature1.title': 'Financial Literacy Made Simple',
   'about.feature1.desc': 'Learn savings, budgeting, and investing tailored to Singapore.',
   'about.feature2.title': 'Safe Remittances',
@@ -114,7 +114,7 @@ const englishTexts = {
   
   // Footer
   'footer.description': 'and tools for a better future.',
-  'footer.copyright': '© 2025 FinGuide SG • Made for Migrant Workers in Singapore',
+  'footer.copyright': '© 2025 MigFin • Made for Migrant Workers in Singapore',
   'footer.links.title': 'Quick Links',
   'footer.links.about': 'About',
   'footer.links.features': 'Features',
@@ -126,7 +126,7 @@ const englishTexts = {
   'footer.bottom': 'Financial literacy is the foundation of financial freedom. Start your journey today.',
   
   // Home Page
-  'home.welcome': 'Welcome to FinGuide SG',
+  'home.welcome': 'Welcome to MigFin',
   'home.startJourney': 'Start Your Financial Journey',
   'home.quickActions': 'Quick Actions',
   'home.modules.title': 'Financial Modules',
@@ -138,7 +138,7 @@ const englishTexts = {
   
   // Login Page
   'login.welcome': 'Welcome Back',
-  'login.subtitle': 'Continue your financial journey with FinGuide SG',
+  'login.subtitle': 'Continue your financial journey with MigFin',
   'login.title': 'Sign In',
   'login.desc': 'Enter your credentials to access your account',
   'login.email': 'Email',
@@ -151,12 +151,12 @@ const englishTexts = {
   'login.noAccount': 'Don\'t have an account?',
   'login.signup': 'Sign Up',
   'login.success': 'Welcome back! 👋',
-  'login.successDesc': 'You have successfully logged in to FinGuide SG.',
+  'login.successDesc': 'You have successfully logged in to MigFin.',
   
   // Signup Page
-  'signup.join': 'Join FinGuide SG',
-  'signup.subtitle': 'Start your journey towards financial independence with Singapore\'s most trusted financial education platform for migrant workers.',
-  'signup.testimonial': 'FinGuide SG helped me save $2,000 in my first year and learn how to send money home safely. The modules are easy to understand in my language!',
+  'signup.join': 'Join MigFin',
+  'signup.subtitle': 'Start your journey towards financial independence with MigFin — a financial education platform for migrant workers.',
+  'signup.testimonial': 'MigFin helped me save $2,000 in my first year and learn how to send money home safely. The modules are easy to understand in my language!',
   'signup.testimonialAuthor': 'Aisha Rahman',
   'signup.testimonialRole': 'Domestic Worker, Philippines',
   'signup.title': 'Create Account',
@@ -167,7 +167,7 @@ const englishTexts = {
   'signup.confirmPassword': 'Confirm Password',
   'signup.country': 'Country of Origin',
   'signup.countryPlaceholder': 'Select your country',
-  'signup.terms': 'I agree to FinGuide SG\'s',
+  'signup.terms': 'I agree to MigFin\'s',
   'signup.termsLink': 'Terms of Service',
   'signup.and': 'and',
   'signup.privacyLink': 'Privacy Policy',
@@ -175,7 +175,7 @@ const englishTexts = {
   'signup.creating': 'Creating Account...',
   'signup.haveAccount': 'Already have an account?',
   'signup.login': 'Log In',
-  'signup.success': 'Welcome to FinGuide SG! 🎉',
+  'signup.success': 'Welcome to MigFin! 🎉',
   'signup.successDesc': 'Your account has been created successfully.',
   'signup.passwordMismatch': 'Password Mismatch',
   'signup.passwordMismatchDesc': 'The password and confirm password do not match.',
@@ -193,14 +193,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [isTranslating, setIsTranslating] = useState(false);
 
   useEffect(() => {
-    const savedLanguage = localStorage.getItem('finguide-language') as Language;
+    const savedLanguage = localStorage.getItem('migfin-language') as Language;
     if (savedLanguage && savedLanguage === 'en') {
       setLanguage(savedLanguage);
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('finguide-language', language);
+    localStorage.setItem('migfin-language', language);
   }, [language]);
 
   // Simple translation function - just returns English text
