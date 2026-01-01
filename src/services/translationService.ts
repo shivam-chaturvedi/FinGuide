@@ -7,7 +7,7 @@ interface TranslationCache {
 
 class TranslationService {
   private cache: TranslationCache = {};
-  private readonly CACHE_KEY = 'finguide-translations';
+  private readonly CACHE_KEY = 'migfin-translations';
   private readonly API_KEY = import.meta.env.VITE_GOOGLE_TRANSLATE_API_KEY;
   private readonly API_URL = 'https://translation.googleapis.com/language/translate/v2';
 

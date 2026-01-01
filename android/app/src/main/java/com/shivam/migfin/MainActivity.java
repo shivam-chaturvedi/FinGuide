@@ -1,4 +1,4 @@
-package com.shivam.FinGuide;
+package com.shivam.migfin;
 
 import com.getcapacitor.BridgeActivity;
 
