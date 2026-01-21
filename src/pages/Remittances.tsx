@@ -9,18 +9,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useExchangeRates } from "@/hooks/useExchangeRates";
-import { 
-  Send, 
-  Shield, 
-  Clock, 
-  Star, 
-  ExternalLink, 
-  AlertTriangle, 
-  Calculator, 
-  TrendingUp, 
-  DollarSign, 
-  Globe, 
-  CheckCircle, 
+import {
+  Send,
+  Shield,
+  Clock,
+  Star,
+  ExternalLink,
+  AlertTriangle,
+  Calculator,
+  TrendingUp,
+  DollarSign,
+  Globe,
+  CheckCircle,
   Info,
   ArrowRight,
   Zap,
@@ -132,83 +132,83 @@ const formatForeignAmount = (value: number, currency: string) =>
 
 // Country configurations (rates will be fetched live)
 const countryConfigs = [
-  { 
-    code: "IN", 
-    name: "India", 
-    flag: "🇮🇳", 
-    currency: "INR", 
+  {
+    code: "IN",
+    name: "India",
+    flag: "🇮🇳",
+    currency: "INR",
     tips: "Use UPI for instant transfers",
     popularMethods: ["Bank Transfer", "UPI", "Cash Pickup"],
     regulations: "RBI regulated, 2FA required"
   },
-  { 
-    code: "PH", 
-    name: "Philippines", 
-    flag: "🇵🇭", 
-    currency: "PHP", 
+  {
+    code: "PH",
+    name: "Philippines",
+    flag: "🇵🇭",
+    currency: "PHP",
     tips: "GCash and bank transfers available",
     popularMethods: ["GCash", "Bank Transfer", "Cash Pickup"],
     regulations: "BSP regulated, ID verification required"
   },
-  { 
-    code: "CN", 
-    name: "China", 
-    flag: "🇨🇳", 
-    currency: "CNY", 
+  {
+    code: "CN",
+    name: "China",
+    flag: "🇨🇳",
+    currency: "CNY",
     tips: "Alipay integration for convenience",
     popularMethods: ["Alipay", "WeChat Pay", "Bank Transfer"],
     regulations: "SAFE regulated, strict documentation"
   },
-  { 
-    code: "BD", 
-    name: "Bangladesh", 
-    flag: "🇧🇩", 
-    currency: "BDT", 
+  {
+    code: "BD",
+    name: "Bangladesh",
+    flag: "🇧🇩",
+    currency: "BDT",
     tips: "Mobile banking widely accepted",
     popularMethods: ["bKash", "Rocket", "Bank Transfer"],
     regulations: "Bangladesh Bank regulated"
   },
-  { 
-    code: "MM", 
-    name: "Myanmar", 
-    flag: "🇲🇲", 
-    currency: "MMK", 
+  {
+    code: "MM",
+    name: "Myanmar",
+    flag: "🇲🇲",
+    currency: "MMK",
     tips: "Mobile money services available",
     popularMethods: ["Wave Money", "KBZ Pay", "Cash Pickup"],
     regulations: "CBM regulated, limited digital options"
   },
-  { 
-    code: "TH", 
-    name: "Thailand", 
-    flag: "🇹🇭", 
-    currency: "THB", 
+  {
+    code: "TH",
+    name: "Thailand",
+    flag: "🇹🇭",
+    currency: "THB",
     tips: "PromptPay integration available",
     popularMethods: ["PromptPay", "Bank Transfer", "Cash Pickup"],
     regulations: "BOT regulated, mobile banking popular"
   },
-  { 
-    code: "VN", 
-    name: "Vietnam", 
-    flag: "🇻🇳", 
-    currency: "VND", 
+  {
+    code: "VN",
+    name: "Vietnam",
+    flag: "🇻🇳",
+    currency: "VND",
     tips: "Mobile banking and e-wallets popular",
     popularMethods: ["MoMo", "ZaloPay", "Bank Transfer"],
     regulations: "SBV regulated, mobile payments common"
   },
-  { 
-    code: "MY", 
-    name: "Malaysia", 
-    flag: "🇲🇾", 
-    currency: "MYR", 
+  {
+    code: "MY",
+    name: "Malaysia",
+    flag: "🇲🇾",
+    currency: "MYR",
     tips: "FPX and mobile banking available",
     popularMethods: ["FPX", "Bank Transfer", "Cash Pickup"],
     regulations: "BNM regulated, digital banking popular"
   },
-  { 
-    code: "PK", 
-    name: "Pakistan", 
-    flag: "🇵🇰", 
-    currency: "PKR", 
+  {
+    code: "PK",
+    name: "Pakistan",
+    flag: "🇵🇰",
+    currency: "PKR",
     tips: "Mobile banking and e-wallets available",
     popularMethods: ["JazzCash", "EasyPaisa", "Bank Transfer"],
     regulations: "SBP regulated, mobile money common"
@@ -266,10 +266,46 @@ export default function Remittances() {
       ? "Exchange Rates (Fetching latest data...)"
       : "Exchange Rates (Awaiting latest data)";
 
+  const [sgdRatesData, setSgdRatesData] = useState<Record<string, number>>({});
+  const [sgdRatesUpdatedAt, setSgdRatesUpdatedAt] = useState<string | null>(null);
+  const [sgdRatesError, setSgdRatesError] = useState<string | null>(null);
+  const currentAmount = parseFloat(amount) || 0;
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSgdRates = async () => {
+      try {
+        const response = await fetch("https://open.er-api.com/v6/latest/SGD");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch SGD rates (${response.status})`);
+        }
+        const payload = await response.json();
+        if (payload.result !== "success") {
+          throw new Error("SGD exchange rate API did not report success");
+        }
+        if (isMounted) {
+          setSgdRatesData(payload.rates ?? {});
+          setSgdRatesUpdatedAt(payload.time_last_update_utc ?? null);
+          setSgdRatesError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setSgdRatesError(err instanceof Error ? err.message : "Failed to fetch SGD rates");
+        }
+      }
+    };
+
+    fetchSgdRates();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Create country data with live rates
   const countryData = countryConfigs.map(config => ({
     ...config,
-    exchangeRate: getRateForCurrency(config.currency),
+    exchangeRate: sgdRatesData[config.currency] ?? getRateForCurrency(config.currency),
+    rateSource: sgdRatesData[config.currency] ? "sgd-api" : "fallback",
     usdRate: getUsdRateForCurrency(config.currency)
   }));
 
@@ -277,30 +313,61 @@ export default function Remittances() {
   const usdRateCaption = currentCountry
     ? `1 USD = ${currentCountry.usdRate.toFixed(4)} ${currentCountry.currency}`
     : null;
-  const currentAmount = parseFloat(amount) || 0;
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSgdRates = async () => {
+      try {
+        const response = await fetch("https://open.er-api.com/v6/latest/SGD");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch SGD rates (${response.status})`);
+        }
+        const payload = await response.json();
+        if (payload.result !== "success") {
+          throw new Error("SGD exchange rate API did not report success");
+        }
+        if (isMounted) {
+          setSgdRatesData(payload.rates ?? {});
+          setSgdRatesUpdatedAt(payload.time_last_update_utc ?? null);
+          setSgdRatesError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setSgdRatesError(err instanceof Error ? err.message : "Failed to fetch SGD rates");
+        }
+      }
+    };
+
+    fetchSgdRates();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const calculateCost = (provider: typeof remittanceProviders[0]) => {
+    const feeMin = provider.minFee;
+    const feeMax = provider.maxFee;
+    const totalMin = currentAmount + feeMin;
+    const totalMax = currentAmount + feeMax;
+
     if (!currentAmount || !currentCountry) {
       return {
-        totalMin: provider.minFee,
-        totalMax: provider.maxFee,
-        feeMin: provider.minFee,
-        feeMax: provider.maxFee,
+        totalMin,
+        totalMax,
+        feeMin,
+        feeMax,
         receivedMin: 0,
         receivedMax: 0,
       };
     }
 
-    const feeMin = provider.minFee;
-    const feeMax = provider.maxFee;
-    const totalMin = currentAmount + feeMin;
-    const totalMax = currentAmount + feeMax;
-    const received = currentAmount * provider.exchangeRate * currentCountry.exchangeRate;
+    const baseRate = currentCountry.exchangeRate ?? sgdRatesData[currentCountry.currency] ?? 1;
+    const finalRate = baseRate * (provider.exchangeRate ?? 1);
 
-    const netMin = Math.max(currentAmount - feeMax, 0);
-    const netMax = Math.max(currentAmount - feeMin, 0);
-    const receivedMin = netMin * provider.exchangeRate * currentCountry.exchangeRate;
-    const receivedMax = netMax * provider.exchangeRate * currentCountry.exchangeRate;
+    const netAfterMaxFee = Math.max(currentAmount - feeMax, 0);
+    const netAfterMinFee = Math.max(currentAmount - feeMin, 0);
+    const receivedMin = netAfterMaxFee * finalRate;
+    const receivedMax = netAfterMinFee * finalRate;
 
     return { totalMin, totalMax, feeMin, feeMax, receivedMin, receivedMax };
   };
@@ -328,7 +395,7 @@ export default function Remittances() {
         <p className="text-muted-foreground text-lg">
           {t('remittances.subtitle', 'Send money home securely and affordably')}
         </p>
-        
+
         {/* Exchange Rate Status */}
         <div className="mt-4 flex flex-col items-center gap-1 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
@@ -338,6 +405,11 @@ export default function Remittances() {
           {usdRateCaption && (
             <span className="text-xs text-muted-foreground">
               {usdRateCaption}
+            </span>
+          )}
+          {sgdRatesUpdatedAt && (
+            <span className="text-xs text-muted-foreground">
+              SGD base rates from open.er-api.com (updated {sgdRatesUpdatedAt})
             </span>
           )}
         </div>
@@ -351,11 +423,19 @@ export default function Remittances() {
             </AlertDescription>
           </Alert>
         )}
+        {sgdRatesError && (
+          <Alert className="mt-4 max-w-md mx-auto" variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {sgdRatesError}. SGD rate conversions may be stale.
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Button 
+        <Button
           onClick={() => setShowCalculator(!showCalculator)}
           className="h-20 flex flex-col gap-2"
           variant="outline"
@@ -363,7 +443,7 @@ export default function Remittances() {
           <Calculator className="h-6 w-6" />
           <span className="text-sm font-medium">{t('remittances.calculator', 'Cost Calculator')}</span>
         </Button>
-        <Button 
+        <Button
           onClick={() => setComparisonMode(!comparisonMode)}
           className="h-20 flex flex-col gap-2"
           variant="outline"
@@ -371,7 +451,7 @@ export default function Remittances() {
           <TrendingUp className="h-6 w-6" />
           <span className="text-sm font-medium">{t('remittances.compare', 'Compare Providers')}</span>
         </Button>
-        <Button 
+        <Button
           onClick={() => window.open('/dashboard/calculators', '_blank')}
           className="h-20 flex flex-col gap-2"
           variant="outline"
@@ -424,7 +504,7 @@ export default function Remittances() {
                 </Select>
               </div>
             </div>
-            
+
             {currentAmount > 0 && currentCountry && (
               <div className="space-y-3">
                 <h4 className="font-semibold">{t('remittances.costBreakdown', 'Cost Breakdown')}</h4>
@@ -495,65 +575,65 @@ export default function Remittances() {
           <h2 className="text-xl font-semibold text-foreground">
             {comparisonMode ? t('remittances.compareProviders', 'Compare Providers') : t('remittances.recommendedProviders', 'Recommended Providers')}
           </h2>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => setComparisonMode(!comparisonMode)}
           >
             {comparisonMode ? t('remittances.listView', 'List View') : t('remittances.compareView', 'Compare')}
           </Button>
         </div>
-        
+
         {comparisonMode ? (
           <div className="grid gap-4">
             {remittanceProviders.map((provider) => (
               <Card key={provider.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex items-start justify-between">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <span className="text-3xl">{provider.logo}</span>
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    {provider.name}
-                    {provider.trusted && (
-                      <Badge variant="secondary" className="bg-growth-green/10 text-growth-green border-growth-green/20">
-                        <Shield className="h-3 w-3 mr-1" />
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          {provider.name}
+                          {provider.trusted && (
+                            <Badge variant="secondary" className="bg-growth-green/10 text-growth-green border-growth-green/20">
+                              <Shield className="h-3 w-3 mr-1" />
                               {t('remittances.trusted', 'Trusted')}
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm font-medium">{provider.rating}</span>
+                            </Badge>
+                          )}
+                        </CardTitle>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            <span className="text-sm font-medium">{provider.rating}</span>
                             <span className="text-xs text-muted-foreground">({provider.reviews.toLocaleString()})</span>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
+                          </div>
+                          <Badge variant="outline" className="text-xs">
                             {t('remittances.masRegulated', 'MAS Regulated')}
-                    </Badge>
-                  </div>
-                </div>
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       className="gap-2"
                       onClick={() => handleProviderSelect(provider.id)}
                     >
                       {t('remittances.visitSite', 'Visit Site')}
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-3 bg-muted rounded-lg">
-                  <div className="text-lg font-bold text-primary">
-                    {formatFeeRange(provider.minFee, provider.maxFee)}
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
                   </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-3 bg-muted rounded-lg">
+                      <div className="text-lg font-bold text-primary">
+                        {formatFeeRange(provider.minFee, provider.maxFee)}
+                      </div>
                       <div className="text-sm text-muted-foreground">{t('remittances.transferFee', 'Transfer Fee')}</div>
-                </div>
-                <div className="text-center p-3 bg-muted rounded-lg">
-                  <div className="text-lg font-bold text-secondary">{provider.time}</div>
+                    </div>
+                    <div className="text-center p-3 bg-muted rounded-lg">
+                      <div className="text-lg font-bold text-secondary">{provider.time}</div>
                       <div className="text-sm text-muted-foreground">{t('remittances.deliveryTime', 'Delivery Time')}</div>
                     </div>
                     <div className="text-center p-3 bg-muted rounded-lg">
@@ -563,40 +643,40 @@ export default function Remittances() {
                     <div className="text-center p-3 bg-muted rounded-lg">
                       <div className="text-lg font-bold text-green-600">{provider.securityScore}%</div>
                       <div className="text-sm text-muted-foreground">{t('remittances.securityScore', 'Security Score')}</div>
-                </div>
-              </div>
-              
-              <div>
+                    </div>
+                  </div>
+
+                  <div>
                     <h5 className="font-medium mb-2">{t('remittances.supportedCountries', 'Supported Countries')}</h5>
-                <div className="flex flex-wrap gap-2">
-                  {provider.countries.map((country) => (
-                    <Badge key={country} variant="outline" className="text-xs">
-                      {country}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              
-              <div>
+                    <div className="flex flex-wrap gap-2">
+                      {provider.countries.map((country) => (
+                        <Badge key={country} variant="outline" className="text-xs">
+                          {country}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
                     <h5 className="font-medium mb-2">{t('remittances.keyFeatures', 'Key Features')}</h5>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  {provider.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2">
-                      <div className="h-1.5 w-1.5 rounded-full bg-primary"></div>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      {provider.features.map((feature, i) => (
+                        <li key={i} className="flex items-center gap-2">
+                          <div className="h-1.5 w-1.5 rounded-full bg-primary"></div>
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {remittanceProviders.map((provider) => (
               <Card key={provider.id} className="hover:shadow-lg transition-shadow cursor-pointer"
-                    onClick={() => handleProviderSelect(provider.id)}>
+                onClick={() => handleProviderSelect(provider.id)}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -644,11 +724,11 @@ export default function Remittances() {
       {/* Country Specific Guides */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold text-foreground">{t('remittances.countryGuides', 'Country Guides')}</h2>
-        
+
         <div className="grid gap-3">
           {countryData.map((guide) => (
-            <Card 
-              key={guide.code} 
+            <Card
+              key={guide.code}
               className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => handleCountryGuide(guide.code)}
             >
