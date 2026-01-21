@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calculator, PiggyBank, Send, TrendingUp, Globe, AlertCircle } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, LabelList } from "recharts";
 import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -24,9 +24,44 @@ const countryConfigs = [
   { code: "PK", name: "Pakistan", currency: "PKR", flag: "🇵🇰", symbol: "₨" },
 ];
 
+const BUDGET_SEGMENTS = [
+  { key: "housing", label: "Housing (Rent/Room)", color: "hsl(271 81% 56%)" },
+  { key: "food", label: "Food & Groceries", color: "hsl(45 93% 58%)" },
+  { key: "transport", label: "Transport", color: "hsl(142 76% 36%)" },
+  { key: "remittance", label: "Remittance (Home)", color: "hsl(6 78% 59%)" },
+  { key: "savings", label: "Savings Goal", color: "hsl(199 100% 38%)" },
+];
+
+const DISCRETIONARY_SEGMENT = {
+  label: "Discretionary",
+  color: "hsl(210 4% 74%)",
+};
+
+const currencyFormatter = new Intl.NumberFormat("en-SG", {
+  style: "currency",
+  currency: "SGD",
+  maximumFractionDigits: 0,
+});
+
+const formatBudgetSegmentLabel = (
+  value: number | string,
+  _: string,
+  entry?: { payload?: { name?: string } }
+) => {
+  const label = entry?.payload?.name ?? "Category";
+  const numericValue = Number(value) || 0;
+  return `${label} · ${currencyFormatter.format(numericValue)}`;
+};
+
+type BudgetPieEntry = {
+  name: string;
+  value: number;
+  color: string;
+};
+
 export default function Calculators() {
   // Exchange rates hook
-  const { rates, loading: ratesLoading, error: ratesError, getRateForCurrency } = useExchangeRates();
+  const { rates, loading: ratesLoading, error: ratesError, getRateForCurrency, getUsdRateForCurrency, lastUpdated } = useExchangeRates();
   // Budget Calculator State
   const [budgetIncome, setBudgetIncome] = useState("");
   const [housing, setHousing] = useState("");
@@ -45,13 +80,23 @@ export default function Calculators() {
   const [selectedCountry, setSelectedCountry] = useState(countryConfigs[0]);
   const [customRate, setCustomRate] = useState("");
   const [transferFee, setTransferFee] = useState("15");
+  const formattedLastUpdated = lastUpdated
+    ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(lastUpdated))
+    : null;
+  const exchangeRateLabel = formattedLastUpdated
+    ? `Exchange Rates (1 USD base · Updated ${formattedLastUpdated})`
+    : ratesLoading
+      ? "Exchange Rates (Fetching latest data...)"
+      : "Exchange Rates (Awaiting latest data)";
 
   // Create countries array with live rates
   const countries = countryConfigs.map(config => {
     const rate = getRateForCurrency(config.currency);
+    const usdRate = getUsdRateForCurrency(config.currency);
     return {
       ...config,
-      rate
+      rate,
+      usdRate
     };
   });
 
@@ -77,7 +122,35 @@ export default function Calculators() {
     
     const totalExpenses = housingCost + foodCost + transportCost + remittanceCost + savingsTarget;
     const remaining = income - totalExpenses;
-    
+
+    const segmentValues = {
+      housing: housingCost,
+      food: foodCost,
+      transport: transportCost,
+      remittance: remittanceCost,
+      savings: savingsTarget,
+    };
+
+    const pieData = BUDGET_SEGMENTS.reduce<BudgetPieEntry[]>((acc, segment) => {
+      const value = Math.max(segmentValues[segment.key] ?? 0, 0);
+      if (value > 0) {
+        acc.push({
+          name: segment.label,
+          value,
+          color: segment.color,
+        });
+      }
+      return acc;
+    }, []);
+
+    if (remaining > 0) {
+      pieData.push({
+        name: DISCRETIONARY_SEGMENT.label,
+        value: remaining,
+        color: DISCRETIONARY_SEGMENT.color,
+      });
+    }
+
     return {
       income,
       expenses: {
@@ -88,14 +161,7 @@ export default function Calculators() {
         savings: savingsTarget,
         remaining: remaining > 0 ? remaining : 0
       },
-      pieData: [
-        { name: "Housing", value: housingCost, color: "hsl(var(--chart-1))" },
-        { name: "Food", value: foodCost, color: "hsl(var(--chart-2))" },
-        { name: "Transport", value: transportCost, color: "hsl(var(--chart-3))" },
-        { name: "Remittance", value: remittanceCost, color: "hsl(var(--chart-4))" },
-        { name: "Savings", value: savingsTarget, color: "hsl(var(--chart-5))" },
-        { name: "Discretionary", value: remaining > 0 ? remaining : 0, color: "hsl(var(--muted))" }
-      ].filter(item => item.value > 0),
+      pieData,
       isOverBudget: totalExpenses > income,
       overBy: totalExpenses > income ? totalExpenses - income : 0
     };
@@ -164,6 +230,8 @@ export default function Calculators() {
   const budget = calculateBudget();
   const savings = calculateSavings();
   const remittance = calculateRemittance();
+  const monthlySavingsInput = parseFloat(savingsAmount) || 0;
+  const durationMonths = parseFloat(savingsMonths) || 0;
 
   return (
     <div className="p-4 space-y-6">
@@ -175,7 +243,7 @@ export default function Calculators() {
         {/* Exchange Rate Status */}
         <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
           <Globe className="h-4 w-4" />
-          <span>Exchange Rates (Updated Jan 2025)</span>
+          <span>{exchangeRateLabel}</span>
         </div>
 
         {/* Exchange Rate Error Alert */}
@@ -258,10 +326,15 @@ export default function Calculators() {
                   <Input
                     id="exchange-rate"
                     type="number"
-                    placeholder={`Default: ${getRateForCurrency(selectedCountry.currency)}`}
+                    placeholder={`Default: ${
+                      (selectedCountry.rate ?? getRateForCurrency(selectedCountry.currency)).toFixed(4)
+                    }`}
                     value={customRate}
                     onChange={(e) => setCustomRate(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    1 USD = {(selectedCountry.usdRate ?? getUsdRateForCurrency(selectedCountry.currency)).toFixed(4)} {selectedCountry.currency}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="transfer-fee">Transfer Fee (SGD)</Label>
@@ -435,8 +508,20 @@ export default function Calculators() {
                             {budget.pieData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
+                            <LabelList
+                              dataKey="value"
+                              position="outside"
+                              offset={10}
+                              formatter={formatBudgetSegmentLabel}
+                              style={{ fontSize: 11, fontWeight: 600, fill: "var(--muted-foreground)" }}
+                            />
                           </Pie>
-                          <Tooltip formatter={(value) => [`S$${value}`, 'Amount']} />
+                          <Tooltip
+                            formatter={(value) => [
+                              currencyFormatter.format(Number(value) || 0),
+                              "Amount",
+                            ]}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
@@ -451,7 +536,7 @@ export default function Calculators() {
                             />
                             <span className="text-sm">{item.name}</span>
                           </div>
-                          <span className="font-semibold">S${item.value}</span>
+                          <span className="font-semibold">{currencyFormatter.format(item.value)}</span>
                         </div>
                       ))}
                     </div>
@@ -566,16 +651,31 @@ export default function Calculators() {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-3 bg-muted rounded-lg">
-                      <p className="text-sm">
-                        💡 <strong>If you save S$50 vs S$100 monthly:</strong><br/>
-                        In {savingsMonths} months, the difference would be S${((parseFloat(savingsAmount) || 0) * (parseFloat(savingsMonths) || 0)).toFixed(0)}
+                    <div className="p-3 bg-muted rounded-lg border border-border">
+                      <p className="text-sm font-semibold">💡 Savings snapshot</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        You plan to contribute{" "}
+                        <strong>S${monthlySavingsInput.toFixed(0)}</strong> monthly for{" "}
+                        <strong>{durationMonths} months</strong>, which totals{" "}
+                        <strong>S${savings.totalContribution}</strong>.
+                      </p>
+                      <p className="text-sm mt-2">
+                        With projected interest of <strong>S${savings.interest}</strong>, your balance
+                        grows to <strong>S${savings.totalWithInterest}</strong>.
                       </p>
                     </div>
-                    <div className="p-3 bg-success/10 rounded-lg">
-                      <p className="text-sm text-success">
-                        🎯 <strong>Motivation:</strong><br/>
-                        In 12 months, you can send home an extra S${savings.monthlyGrowth} per month!
+                    <div className="p-3 bg-success/10 rounded-lg border border-success/20">
+                      <p className="text-sm font-semibold text-success">🎯 Motivation</p>
+                      <p className="text-sm text-success mt-1">
+                        Keeping this pace means earning about{" "}
+                        <strong>S${savings.monthlyGrowth}</strong> in growth every month (interest + contributions).
+                      </p>
+                      <p className="text-xs text-success/90 mt-1">
+                        That&rsquo;s roughly{" "}
+                        <strong>
+                          {((parseFloat(savings.interest) / parseFloat(savings.totalContribution)) * 100 || 0).toFixed(1)}%
+                        </strong>{" "}
+                        extra on your contributions.
                       </p>
                     </div>
                   </div>

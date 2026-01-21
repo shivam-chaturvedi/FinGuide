@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Globe, MapPin, Users } from "lucide-react";
 import { APP_CONFIG } from "@/config/app";
-import { useTheme } from "@/contexts/ThemeContext";
+
+const logoSrc = "/assets/logo.jpeg";
 
 const Footer = () => {
-  const { theme } = useTheme();
   
   return (
     <footer className="bg-foreground text-background py-8 sm:py-12">
@@ -12,13 +12,22 @@ const Footer = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {/* Logo and Description */}
           <div className="sm:col-span-2 lg:col-span-2">
-            <div className="mb-4">
-              <h3 className="text-xl sm:text-2xl font-bold">
-                {APP_CONFIG.name}
-              </h3>
-              <p className="text-background/80 mt-2 max-w-md text-sm sm:text-base">
-                {APP_CONFIG.description} and tools for a better future.
-              </p>
+            <div className="mb-4 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <img
+                  src={logoSrc}
+                  alt={`${APP_CONFIG.name} logo`}
+                  className="h-12 w-12 rounded-lg object-cover border border-background/20 shadow-lg"
+                />
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-bold">
+                    {APP_CONFIG.name}
+                  </h3>
+                  <p className="text-background/80 mt-2 max-w-md text-sm sm:text-base">
+                    {APP_CONFIG.description} and tools for a better future.
+                  </p>
+                </div>
+              </div>
             </div>
             <div className="text-xs sm:text-sm text-background/60">
               © 2025 {APP_CONFIG.name} • Made for {APP_CONFIG.targetAudience}

@@ -32,7 +32,7 @@ const ModuleViewer = ({ html, className = '' }: { html: string; className?: stri
   const safeHtml = DOMPurify.sanitize(html || '');
   return (
     <div
-      className={`prose prose-base sm:prose-lg lg:prose-xl max-w-none ${className} text-foreground`}
+      className={`module-content prose prose-base sm:prose-lg lg:prose-xl max-w-none ${className} text-black dark:text-black`}
       dangerouslySetInnerHTML={{ __html: safeHtml }}
     />
   );

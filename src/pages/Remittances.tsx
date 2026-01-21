@@ -112,6 +112,24 @@ const remittanceProviders = [
   }
 ];
 
+const currencyFormatter = new Intl.NumberFormat("en-SG", {
+  style: "currency",
+  currency: "SGD",
+  maximumFractionDigits: 2,
+});
+
+const formatFeeRange = (min: number, max: number) =>
+  min === max
+    ? currencyFormatter.format(min)
+    : `${currencyFormatter.format(min)} - ${currencyFormatter.format(max)}`;
+
+const formatForeignAmount = (value: number, currency: string) =>
+  new Intl.NumberFormat("en-SG", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(value);
+
 // Country configurations (rates will be fetched live)
 const countryConfigs = [
   { 
@@ -233,34 +251,58 @@ const safetyTips = [
 export default function Remittances() {
   const { t } = useLanguage();
   const { user, profile } = useAuth();
-  const { rates, loading: ratesLoading, error: ratesError, getRateForCurrency } = useExchangeRates();
+  const { rates, loading: ratesLoading, error: ratesError, getRateForCurrency, getUsdRateForCurrency, lastUpdated } = useExchangeRates();
   const [selectedCountry, setSelectedCountry] = useState("IN");
   const [amount, setAmount] = useState("");
   const [selectedProvider, setSelectedProvider] = useState("");
   const [showCalculator, setShowCalculator] = useState(false);
   const [comparisonMode, setComparisonMode] = useState(false);
+  const formattedLastUpdated = lastUpdated
+    ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(lastUpdated))
+    : null;
+  const exchangeRateLabel = formattedLastUpdated
+    ? `Exchange Rates (1 USD base · Updated ${formattedLastUpdated})`
+    : ratesLoading
+      ? "Exchange Rates (Fetching latest data...)"
+      : "Exchange Rates (Awaiting latest data)";
 
   // Create country data with live rates
   const countryData = countryConfigs.map(config => ({
     ...config,
-    exchangeRate: getRateForCurrency(config.currency)
+    exchangeRate: getRateForCurrency(config.currency),
+    usdRate: getUsdRateForCurrency(config.currency)
   }));
 
   const currentCountry = countryData.find(c => c.code === selectedCountry);
+  const usdRateCaption = currentCountry
+    ? `1 USD = ${currentCountry.usdRate.toFixed(4)} ${currentCountry.currency}`
+    : null;
   const currentAmount = parseFloat(amount) || 0;
 
   const calculateCost = (provider: typeof remittanceProviders[0]) => {
-    if (!currentAmount) return { total: 0, fee: 0, received: 0 };
-    
-    const fee = provider.fee.includes('%') 
-      ? (currentAmount * parseFloat(provider.fee) / 100)
-      : parseFloat(provider.fee.replace('$', ''));
-    
-    const actualFee = Math.max(provider.minFee, Math.min(fee, provider.maxFee));
-    const total = currentAmount + actualFee;
-    const received = (currentAmount * provider.exchangeRate * currentCountry?.exchangeRate || 1);
-    
-    return { total, fee: actualFee, received };
+    if (!currentAmount || !currentCountry) {
+      return {
+        totalMin: provider.minFee,
+        totalMax: provider.maxFee,
+        feeMin: provider.minFee,
+        feeMax: provider.maxFee,
+        receivedMin: 0,
+        receivedMax: 0,
+      };
+    }
+
+    const feeMin = provider.minFee;
+    const feeMax = provider.maxFee;
+    const totalMin = currentAmount + feeMin;
+    const totalMax = currentAmount + feeMax;
+    const received = currentAmount * provider.exchangeRate * currentCountry.exchangeRate;
+
+    const netMin = Math.max(currentAmount - feeMax, 0);
+    const netMax = Math.max(currentAmount - feeMin, 0);
+    const receivedMin = netMin * provider.exchangeRate * currentCountry.exchangeRate;
+    const receivedMax = netMax * provider.exchangeRate * currentCountry.exchangeRate;
+
+    return { totalMin, totalMax, feeMin, feeMax, receivedMin, receivedMax };
   };
 
   const handleProviderSelect = (providerId: string) => {
@@ -288,9 +330,16 @@ export default function Remittances() {
         </p>
         
         {/* Exchange Rate Status */}
-        <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Globe className="h-4 w-4" />
-          <span>Exchange Rates (Updated Jan 2025)</span>
+        <div className="mt-4 flex flex-col items-center gap-1 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            <span>{exchangeRateLabel}</span>
+          </div>
+          {usdRateCaption && (
+            <span className="text-xs text-muted-foreground">
+              {usdRateCaption}
+            </span>
+          )}
         </div>
 
         {/* Exchange Rate Error Alert */}
@@ -389,13 +438,23 @@ export default function Remittances() {
                           <div>
                             <div className="font-medium">{provider.name}</div>
                             <div className="text-sm text-muted-foreground">
-                              {t('remittances.receives', 'Recipient receives')}: {cost.received.toFixed(2)} {currentCountry.currency}
+                              {t('remittances.receives', 'Recipient receives')}:{" "}
+                              {formatForeignAmount(cost.receivedMin, currentCountry.currency)} –
+                              {formatForeignAmount(cost.receivedMax, currentCountry.currency)}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold text-primary">${cost.fee.toFixed(2)}</div>
-                          <div className="text-sm text-muted-foreground">{t('remittances.fee', 'fee')}</div>
+                          <div className="font-bold text-primary">
+                            {formatFeeRange(cost.feeMin, cost.feeMax)}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {t('remittances.fee', 'fee')}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {t('remittances.totalCost', 'Total Cost')}:{" "}
+                            {formatFeeRange(cost.totalMin, cost.totalMax)}
+                          </div>
                         </div>
                       </div>
                     );
@@ -488,7 +547,9 @@ export default function Remittances() {
             <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center p-3 bg-muted rounded-lg">
-                  <div className="text-lg font-bold text-primary">{provider.fee}</div>
+                  <div className="text-lg font-bold text-primary">
+                    {formatFeeRange(provider.minFee, provider.maxFee)}
+                  </div>
                       <div className="text-sm text-muted-foreground">{t('remittances.transferFee', 'Transfer Fee')}</div>
                 </div>
                 <div className="text-center p-3 bg-muted rounded-lg">
@@ -559,7 +620,9 @@ export default function Remittances() {
                 <CardContent className="space-y-3">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="text-center p-2 bg-muted rounded">
-                      <div className="font-bold text-primary">{provider.fee}</div>
+                      <div className="font-bold text-primary">
+                        {formatFeeRange(provider.minFee, provider.maxFee)}
+                      </div>
                       <div className="text-xs text-muted-foreground">{t('remittances.fee', 'Fee')}</div>
                     </div>
                     <div className="text-center p-2 bg-muted rounded">

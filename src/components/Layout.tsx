@@ -29,7 +29,7 @@ export function Layout() {
       {/* Enhanced Responsive Header */}
       <header className="bg-card border-b border-border p-3 sm:p-4 flex justify-between items-center shadow-sm">
         {/* Logo */}
-        <Logo size="sm" showText={true} className="truncate" />
+        <Logo size="lg" showText={true} className="truncate" />
         
                 {/* Desktop Navigation */}
                 <div className="hidden md:flex items-center gap-2">

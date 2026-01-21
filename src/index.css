@@ -496,6 +496,14 @@ All colors MUST be HSL.
   .bg-gradient-auth {
     background: var(--gradient-auth);
   }
+
+  .module-content {
+    color: hsl(0 0% 0%);
+  }
+
+  .module-content :is(h1, h2, h3, h4, h5, h6, p, li, span, blockquote, a, strong, em) {
+    color: hsl(0 0% 0%) !important;
+  }
   
   /* Shadow utilities */
   .shadow-card {
