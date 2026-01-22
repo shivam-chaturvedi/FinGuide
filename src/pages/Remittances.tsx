@@ -40,9 +40,10 @@ const remittanceProviders = [
     logo: "💳",
     rating: 4.8,
     reviews: 125000,
-    fee: "0.5%",
+    fee: "0.35% - 1%",
     minFee: 0.65,
     maxFee: 2.50,
+    feeRangeLabel: "0.35% - 1%",
     time: "1-2 days",
     countries: ["India", "Philippines", "China", "Bangladesh", "Myanmar", "Thailand", "Vietnam"],
     features: ["Real exchange rate", "Low fees", "Mobile app", "Multi-currency account"],
@@ -97,9 +98,10 @@ const remittanceProviders = [
     logo: "⚡",
     rating: 4.3,
     reviews: 45000,
-    fee: "0.5%",
+    fee: "0.25% - 1%",
     minFee: 1.00,
     maxFee: 3.00,
+    feeRangeLabel: "0.25% - 1%",
     time: "Same day",
     countries: ["India", "Philippines", "Bangladesh", "Sri Lanka"],
     features: ["Zero markup", "Fast transfers", "Transparent fees", "Mobile app"],
@@ -118,10 +120,12 @@ const currencyFormatter = new Intl.NumberFormat("en-SG", {
   maximumFractionDigits: 2,
 });
 
-const formatFeeRange = (min: number, max: number) =>
-  min === max
-    ? currencyFormatter.format(min)
-    : `${currencyFormatter.format(min)} - ${currencyFormatter.format(max)}`;
+const formatFeeRange = (min: number, max: number, override?: string) =>
+  override
+    ? override
+    : min === max
+      ? currencyFormatter.format(min)
+      : `${currencyFormatter.format(min)} - ${currencyFormatter.format(max)}`;
 
 const formatForeignAmount = (value: number, currency: string) =>
   new Intl.NumberFormat("en-SG", {
@@ -526,7 +530,7 @@ export default function Remittances() {
                         </div>
                         <div className="text-right">
                           <div className="font-bold text-primary">
-                            {formatFeeRange(cost.feeMin, cost.feeMax)}
+                            {formatFeeRange(cost.feeMin, cost.feeMax, provider.feeRangeLabel)}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             {t('remittances.fee', 'fee')}
@@ -628,7 +632,7 @@ export default function Remittances() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center p-3 bg-muted rounded-lg">
                       <div className="text-lg font-bold text-primary">
-                        {formatFeeRange(provider.minFee, provider.maxFee)}
+                        {formatFeeRange(provider.minFee, provider.maxFee, provider.feeRangeLabel)}
                       </div>
                       <div className="text-sm text-muted-foreground">{t('remittances.transferFee', 'Transfer Fee')}</div>
                     </div>
@@ -637,7 +641,7 @@ export default function Remittances() {
                       <div className="text-sm text-muted-foreground">{t('remittances.deliveryTime', 'Delivery Time')}</div>
                     </div>
                     <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-lg font-bold text-accent">{(provider.exchangeRate * 100).toFixed(1)}%</div>
+                      <div className="text-lg font-bold text-black dark:text-white">{(provider.exchangeRate * 100).toFixed(1)}%</div>
                       <div className="text-sm text-muted-foreground">{t('remittances.exchangeRate', 'Exchange Rate')}</div>
                     </div>
                     <div className="text-center p-3 bg-muted rounded-lg">
@@ -701,7 +705,7 @@ export default function Remittances() {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="text-center p-2 bg-muted rounded">
                       <div className="font-bold text-primary">
-                        {formatFeeRange(provider.minFee, provider.maxFee)}
+                        {formatFeeRange(provider.minFee, provider.maxFee, provider.feeRangeLabel)}
                       </div>
                       <div className="text-xs text-muted-foreground">{t('remittances.fee', 'Fee')}</div>
                     </div>
