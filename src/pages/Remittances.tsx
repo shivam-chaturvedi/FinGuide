@@ -41,6 +41,8 @@ const remittanceProviders = [
     rating: 4.8,
     reviews: 125000,
     fee: "0.35% - 1%",
+    feePercentMin: 0.35,
+    feePercentMax: 1,
     minFee: 0.65,
     maxFee: 2.50,
     feeRangeLabel: "0.35% - 1%",
@@ -60,9 +62,12 @@ const remittanceProviders = [
     logo: "🚀",
     rating: 4.6,
     reviews: 89000,
-    fee: "1.2%",
-    minFee: 1.99,
-    maxFee: 4.99,
+    fee: "0.5% - 3%",
+    feePercentMin: 0.5,
+    feePercentMax: 3,
+    minFee: 0,
+    maxFee: 0,
+    feeRangeLabel: "0.5% - 3%",
     time: "Minutes",
     countries: ["India", "Philippines", "Bangladesh", "Mexico", "Guatemala"],
     features: ["Fast transfers", "Cash pickup", "Bank deposit", "Mobile app"],
@@ -99,6 +104,8 @@ const remittanceProviders = [
     rating: 4.3,
     reviews: 45000,
     fee: "0.25% - 1%",
+    feePercentMin: 0.25,
+    feePercentMax: 1,
     minFee: 1.00,
     maxFee: 3.00,
     feeRangeLabel: "0.25% - 1%",
@@ -349,8 +356,15 @@ export default function Remittances() {
   }, []);
 
   const calculateCost = (provider: typeof remittanceProviders[0]) => {
-    const feeMin = provider.minFee;
-    const feeMax = provider.maxFee;
+    const computePercent = (pct?: number) =>
+      pct !== undefined ? (currentAmount * (pct / 100)) : undefined;
+
+    const percentFeeMin = computePercent(provider.feePercentMin);
+    const percentFeeMax =
+      provider.feePercentMax !== undefined ? computePercent(provider.feePercentMax) : percentFeeMin;
+
+    const feeMin = percentFeeMin ?? provider.minFee ?? 0;
+    const feeMax = percentFeeMax ?? provider.maxFee ?? feeMin;
     const totalMin = currentAmount + feeMin;
     const totalMax = currentAmount + feeMax;
 
@@ -701,25 +715,31 @@ export default function Remittances() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="text-center p-2 bg-muted rounded">
-                      <div className="font-bold text-primary">
-                        {formatFeeRange(provider.minFee, provider.maxFee, provider.feeRangeLabel)}
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-center p-2 bg-muted rounded">
+                        <div className="font-bold text-primary">
+                          {formatFeeRange(provider.minFee, provider.maxFee, provider.feeRangeLabel)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{t('remittances.fee', 'Fee')}</div>
                       </div>
-                      <div className="text-xs text-muted-foreground">{t('remittances.fee', 'Fee')}</div>
+                      <div className="text-center p-2 bg-muted rounded">
+                        <div className="font-bold text-secondary">{provider.time}</div>
+                        <div className="text-xs text-muted-foreground">{t('remittances.time', 'Time')}</div>
+                      </div>
                     </div>
-                    <div className="text-center p-2 bg-muted rounded">
-                      <div className="font-bold text-secondary">{provider.time}</div>
-                      <div className="text-xs text-muted-foreground">{t('remittances.time', 'Time')}</div>
-                    </div>
-                  </div>
-                  <Button className="w-full" size="sm">
-                    {t('remittances.chooseProvider', 'Choose Provider')}
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </CardContent>
-              </Card>
+                    <Button className="w-full" size="sm">
+                      {t('remittances.chooseProvider', 'Choose Provider')}
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t(
+                        'remittances.providerDisclaimer',
+                        'This button opens the provider’s official website, which is no longer part of MigFin.'
+                      )}
+                    </p>
+                  </CardContent>
+                </Card>
             ))}
           </div>
         )}

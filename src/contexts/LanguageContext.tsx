@@ -135,6 +135,8 @@ const englishTexts = {
   'home.calculators.desc': 'Budget planner and savings calculator',
   'home.remittances.title': 'Safe Remittances',
   'home.remittances.desc': 'Send money home safely and affordably',
+  'remittances.providerDisclaimer': 'This button opens the provider’s official website, which is no longer part of MigFin.',
+  'index.mainDisclaimer': 'The content on MigFin is for educational and informational purposes only. It is not professional financial advice. Please consider your own situation carefully before making financial decisions.',
   
   // Login Page
   'login.welcome': 'Welcome Back',

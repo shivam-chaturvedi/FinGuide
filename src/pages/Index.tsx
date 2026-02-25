@@ -7,6 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme as useNextTheme } from "next-themes";
+import { Info } from "lucide-react";
 import HeroSection from "@/components/sections/HeroSection";
 import AboutSection from "@/components/sections/AboutSection";
 import PurposeSection from "@/components/sections/PurposeSection";
@@ -90,6 +91,17 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="flex-1">
+        <div className="mx-auto max-w-5xl px-4 py-4">
+          <div className="flex items-start gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 text-sm text-foreground/80">
+            <Info className="mt-0.5 h-5 w-5 text-primary" />
+            <p className="leading-relaxed">
+              {t(
+                'index.mainDisclaimer',
+                'The content on MigFin is for educational and informational purposes only. It is not professional financial advice. Please consider your own situation carefully before making financial decisions.'
+              )}
+            </p>
+          </div>
+        </div>
         <HeroSection />
         <AboutSection />
         <PurposeSection />
