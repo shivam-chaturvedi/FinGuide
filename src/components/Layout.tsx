@@ -38,7 +38,7 @@ export function Layout() {
             <div className="flex items-center gap-2 ml-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <User className="h-4 w-4" />
-                <span className="hidden lg:inline">{profile?.full_name || user.email}</span>
+                <span className="hidden lg:inline">{profile?.full_name || profile?.email || profile?.email_input || user.email}</span>
               </div>
                   <Button asChild variant="ghost" size="sm">
                     <Link to="/dashboard/profile">
@@ -95,7 +95,7 @@ export function Layout() {
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground p-2 bg-muted rounded-lg">
                       <User className="h-4 w-4" />
-                      <span>{profile?.full_name || user.email}</span>
+                      <span>{profile?.full_name || profile?.email || profile?.email_input || user.email}</span>
                     </div>
                     
                     <div className="space-y-2">

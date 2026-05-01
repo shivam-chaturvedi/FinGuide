@@ -3,11 +3,14 @@ import { User, Session, AuthError, PostgrestError } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { createUserProfile } from '@/utils/createUserProfile'
+import { normalizeAuthEmail } from '@/utils/normalizeAuthEmail'
 
 export interface UserProfile {
   id: string
   user_id: string
   full_name: string
+  email?: string
+  email_input?: string
   phone?: string
   country: string
   occupation: string
@@ -141,11 +144,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     financialGoals?: string[]
   ) => {
     try {
+      const rawEmail = email.trim()
+      const emailForAuth = normalizeAuthEmail(email)
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: emailForAuth,
         password,
         options: {
           data: {
+            email: rawEmail,
+            email_input: rawEmail,
             full_name: fullName,
             phone,
             country,
@@ -173,6 +180,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             {
               user_id: data.user.id,
               full_name: fullName,
+              email: rawEmail || null,
+              email_input: rawEmail || null,
               phone: phone || null,
               country: country || 'Singapore',
               occupation: occupation || 'Migrant Worker',
@@ -215,7 +224,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const emailForAuth = normalizeAuthEmail(email)
+      const { error } = await supabase.auth.signInWithPassword({ email: emailForAuth, password })
 
       if (error) {
         toast({
@@ -347,7 +357,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const resetPassword = async (email: string) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const emailForAuth = normalizeAuthEmail(email)
+      const { error } = await supabase.auth.resetPasswordForEmail(emailForAuth, {
         redirectTo: `${window.location.origin}/reset-password`,
       })
 

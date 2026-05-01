@@ -7,6 +7,8 @@ export const createUserProfile = async (user: User) => {
   const profileData = {
     user_id: user.id,
     full_name: userData.full_name || user.email?.split('@')[0] || 'User',
+    email: userData.email || null,
+    email_input: userData.email_input || null,
     phone: userData.phone || null,
     country: userData.country || 'Singapore',
     occupation: userData.occupation || 'Migrant Worker',

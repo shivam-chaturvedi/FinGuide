@@ -27,8 +27,8 @@ const benefits = APP_CONFIG.features;
 
 // Validation functions
 const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  // Intentionally permissive: accept anything non-empty (Supabase mapping happens in AuthContext).
+  return email.trim().length > 0;
 };
 
 const validatePhone = (phone: string): boolean => {
@@ -39,53 +39,9 @@ const validatePhone = (phone: string): boolean => {
 };
 
 const validatePassword = (password: string): { isValid: boolean; strength: string; requirements: string[] } => {
-  const requirements = [];
-  let score = 0;
-
-  if (password.length >= 8) {
-    score += 1;
-    requirements.push("At least 8 characters");
-  } else {
-    requirements.push("At least 8 characters");
-  }
-
-  if (/[a-z]/.test(password)) {
-    score += 1;
-    requirements.push("Lowercase letter");
-  } else {
-    requirements.push("Lowercase letter");
-  }
-
-  if (/[A-Z]/.test(password)) {
-    score += 1;
-    requirements.push("Uppercase letter");
-  } else {
-    requirements.push("Uppercase letter");
-  }
-
-  if (/\d/.test(password)) {
-    score += 1;
-    requirements.push("Number");
-  } else {
-    requirements.push("Number");
-  }
-
-  if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    score += 1;
-    requirements.push("Special character");
-  } else {
-    requirements.push("Special character");
-  }
-
-  let strength = "Weak";
-  if (score >= 4) strength = "Strong";
-  else if (score >= 3) strength = "Medium";
-
-  return {
-    isValid: score >= 4,
-    strength,
-    requirements
-  };
+  // Keep only Supabase's practical minimum (default is 6). No strength rules.
+  const isValid = password.length >= 6;
+  return { isValid, strength: "", requirements: [] };
 };
 
 const validateName = (name: string): boolean => {
@@ -115,8 +71,6 @@ export default function Signup() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
-  const [passwordValidation, setPasswordValidation] = useState({ isValid: false, strength: "Weak", requirements: [] });
-  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -130,11 +84,7 @@ export default function Signup() {
       setValidationErrors(prev => ({ ...prev, [field]: "" }));
     }
     
-    // Real-time validation for specific fields
-    if (field === "password") {
-      const validation = validatePassword(value);
-      setPasswordValidation(validation);
-    }
+    // No password strength validation (intentionally permissive)
   };
 
   const validateField = (field: string, value: string): string => {
@@ -146,7 +96,6 @@ export default function Signup() {
       
       case "email":
         if (!value.trim()) return "Email address is required";
-        if (!validateEmail(value)) return "Please enter a valid email address";
         return "";
       
       case "phone":
@@ -170,7 +119,7 @@ export default function Signup() {
       case "password":
         if (!value) return "Password is required";
         const passwordValidation = validatePassword(value);
-        if (!passwordValidation.isValid) return "Password does not meet requirements";
+        if (!passwordValidation.isValid) return "Password must be at least 6 characters";
         return "";
       
       case "confirmPassword":
@@ -377,7 +326,7 @@ export default function Signup() {
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="email"
-                      type="email"
+                      type="text"
                       placeholder="john@example.com"
                       value={formData.email}
                       onChange={(e) => handleInputChange("email", e.target.value)}
@@ -581,11 +530,9 @@ export default function Signup() {
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Create a strong password"
+                      placeholder="Enter a password"
                       value={formData.password}
                       onChange={(e) => handleInputChange("password", e.target.value)}
-                      onFocus={() => setShowPasswordRequirements(true)}
-                      onBlur={() => setShowPasswordRequirements(false)}
                       className={`pl-10 pr-10 h-12 ${validationErrors.password ? 'border-red-500 focus:border-red-500' : ''}`}
                       required
                     />
@@ -597,57 +544,6 @@ export default function Signup() {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
-                  
-                  {/* Password Strength Indicator */}
-                  {formData.password && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full transition-all duration-300 ${
-                              passwordValidation.strength === 'Strong' ? 'bg-green-500' :
-                              passwordValidation.strength === 'Medium' ? 'bg-yellow-500' : 'bg-red-500'
-                            }`}
-                            style={{ width: passwordValidation.strength === 'Strong' ? '100%' : passwordValidation.strength === 'Medium' ? '66%' : '33%' }}
-                          />
-                        </div>
-                        <span className={`text-xs font-medium ${
-                          passwordValidation.strength === 'Strong' ? 'text-green-600' :
-                          passwordValidation.strength === 'Medium' ? 'text-yellow-600' : 'text-red-600'
-                        }`}>
-                          {passwordValidation.strength}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Password Requirements */}
-                  {showPasswordRequirements && formData.password && (
-                    <div className="p-3 bg-gray-50 rounded-lg space-y-1">
-                      <p className="text-xs font-medium text-gray-700">Password Requirements:</p>
-                      {passwordValidation.requirements.map((requirement, index) => {
-                        const isValid = passwordValidation.requirements[index] && 
-                          (requirement.includes('8 characters') ? formData.password.length >= 8 :
-                           requirement.includes('Lowercase') ? /[a-z]/.test(formData.password) :
-                           requirement.includes('Uppercase') ? /[A-Z]/.test(formData.password) :
-                           requirement.includes('Number') ? /\d/.test(formData.password) :
-                           requirement.includes('Special') ? /[!@#$%^&*(),.?":{}|<>]/.test(formData.password) : false);
-                        
-                        return (
-                          <div key={index} className="flex items-center gap-2 text-xs">
-                            {isValid ? (
-                              <CheckCircle className="h-3 w-3 text-green-500" />
-                            ) : (
-                              <AlertCircle className="h-3 w-3 text-gray-400" />
-                            )}
-                            <span className={isValid ? 'text-green-600' : 'text-gray-500'}>
-                              {requirement}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                   
                   {validationErrors.password && (
                     <p className="text-sm text-red-500 flex items-center gap-1">
