@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { createUserProfile } from '@/utils/createUserProfile'
 import { normalizeAuthEmail } from '@/utils/normalizeAuthEmail'
+import { getPublicSiteUrl } from '@/utils/getPublicSiteUrl'
 
 export interface UserProfile {
   id: string
@@ -206,7 +207,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         toast({
           title: "Account Created!",
-          description: "Please check your email to verify your account.",
+          description:
+            "Your account has been created successfully. You can sign in now.",
         })
       }
 
@@ -358,8 +360,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const resetPassword = async (email: string) => {
     try {
       const emailForAuth = normalizeAuthEmail(email)
+      const publicSiteUrl = getPublicSiteUrl()
       const { error } = await supabase.auth.resetPasswordForEmail(emailForAuth, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${(publicSiteUrl || window.location.origin).replace(/\/+$/, '')}/reset-password`,
       })
 
       if (error) {

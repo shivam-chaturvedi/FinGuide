@@ -182,7 +182,7 @@ export default function Signup() {
       if (!error) {
         toast({
           title: `Welcome to ${APP_CONFIG.name}! 🎉`,
-          description: "Your account has been created successfully! Please check your email to verify your account, then sign in.",
+          description: "Your account has been created successfully! You can sign in now.",
         });
         // Reset form
         setFormData({

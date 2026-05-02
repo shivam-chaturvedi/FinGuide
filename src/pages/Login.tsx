@@ -22,7 +22,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { signIn, user, isAdmin } = useAuth();
+  const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
