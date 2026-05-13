@@ -72,15 +72,23 @@ const GoogleTranslate = () => {
       }
 
       // Apply theme-specific styles
-      const styles = isDarkMode ? `
-        .goog-te-banner-frame {
-          display: none !important;
-        }
-        
-        /* Main container styling */
-        .goog-te-gadget {
-          color: #f8fafc !important;
-          font-size: 14px !important;
+	      const styles = isDarkMode ? `
+	        .goog-te-banner-frame {
+	          display: none !important;
+	        }
+
+	        /* Ensure the language menu/dropdown is always on top (mobile WebView can stack it under page content) */
+	        .goog-te-menu-frame {
+	          z-index: 2147483647 !important;
+	        }
+	        .goog-te-menu2 {
+	          z-index: 2147483647 !important;
+	        }
+	        
+	        /* Main container styling */
+	        .goog-te-gadget {
+	          color: #f8fafc !important;
+	          font-size: 14px !important;
           font-weight: 600 !important;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
         }
@@ -218,15 +226,23 @@ const GoogleTranslate = () => {
             margin-right: 1px !important;
           }
         }
-      ` : `
-        .goog-te-banner-frame {
-          display: none !important;
-        }
-        
-        /* Main container styling */
-        .goog-te-gadget {
-          color: #1e293b !important;
-          font-size: 14px !important;
+	      ` : `
+	        .goog-te-banner-frame {
+	          display: none !important;
+	        }
+
+	        /* Ensure the language menu/dropdown is always on top (mobile WebView can stack it under page content) */
+	        .goog-te-menu-frame {
+	          z-index: 2147483647 !important;
+	        }
+	        .goog-te-menu2 {
+	          z-index: 2147483647 !important;
+	        }
+	        
+	        /* Main container styling */
+	        .goog-te-gadget {
+	          color: #1e293b !important;
+	          font-size: 14px !important;
           font-weight: 600 !important;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
         }
@@ -433,25 +449,25 @@ const GoogleTranslate = () => {
     };
   }, []);
 
-  return (
-    <div className="absolute top-20 md:top-28 right-2 sm:right-4 md:right-8 z-50 google-translate-container">
-      <div className="flex items-center gap-2 sm:gap-3 bg-transparent dark:bg-slate-800/90 backdrop-blur-md rounded-xl shadow-lg border border-blue-200/50 dark:border-blue-400/50 max-w-[calc(100vw-1rem)] sm:max-w-none">
-        {/* <div className="flex items-center gap-1 sm:gap-2">
-        </div> */}
-        <div
-          id="google_translate_element"
-          className="translate-widget"
-          style={{
-            minHeight: "20px",
-            overflow: "visible",
-            zIndex: 9999,
-            maxWidth: "calc(100vw - 120px)",
-          }}
-        ></div>
-      </div>
-    </div>
-  );
-};
+	  return (
+	    <div className="fixed top-20 md:top-28 right-2 sm:right-4 md:right-8 z-[9999] google-translate-container">
+	      <div className="flex items-center gap-2 sm:gap-3 bg-transparent dark:bg-slate-800/90 backdrop-blur-md rounded-xl shadow-lg border border-blue-200/50 dark:border-blue-400/50 max-w-[calc(100vw-1rem)] sm:max-w-none">
+	        {/* <div className="flex items-center gap-1 sm:gap-2">
+	        </div> */}
+	        <div
+	          id="google_translate_element"
+	          className="translate-widget"
+	          style={{
+	            minHeight: "20px",
+	            overflow: "visible",
+	            zIndex: 9999,
+	            maxWidth: "calc(100vw - 120px)",
+	          }}
+	        ></div>
+	      </div>
+	    </div>
+	  );
+	};
 
 export { GoogleTranslate };
 export default GoogleTranslate;
